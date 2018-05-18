@@ -21,9 +21,17 @@
 
 class Song extends React.Component {
     render() {
-        const title = this.props.song.split("/").slice(1).join("/");
+        const title = this.props.song
+            .split("/")
+            .slice(1)
+            .join("/")
+            .replace(".mp3", "")
+            .replace(/_/g, " ")
+            .replace(/^\d{2,}-/g, "")
+            .replace(/(\w)\.(\w)/g, '$1 $2');
+
         return (<li>
-                    <h3>{title.replace(".mp3", "")}</h3>
+                    <h3>{title}</h3>
                     <audio preload="none"  controls>
                         <source src={this.props.song} type="audio/mpeg" />
                     </audio>
@@ -34,7 +42,11 @@ class Song extends React.Component {
             .split("/")
             .slice(1)
             .join("/")
-            .replace(".mp3", "");
+            .replace(".mp3", "")
+            .replace(/_/g, " ")
+            .replace(/^\d{2,}-/g, "")
+            .replace(/(\w)\.(\w)/g, '$1 $2');
+
         const playlist = [{url: this.props.song, title:songTitle}];
         
         return (<li>
@@ -47,7 +59,14 @@ class Song extends React.Component {
 
 class Playlist extends React.Component {
     render() {
-        const songs = this.props.songs.map(s => ({url: s, title: s.split("/").pop().replace(".mp3", "")}));
+        const songs = this.props.songs.map(s => ({url: s,
+                                                 title: s.split("/")
+                                                         .pop()
+                                                         .replace(".mp3", "")
+                                                         .replace(/_/g, " ")
+                                                         .replace(/^\d{2,}-/g, "")
+                                                         .replace(/(\w)\.(\w)/g, '$1 $2')
+                      }));
         return (<li>
                     <h3>{this.props.title}</h3>
                     <AudioPlayer playlist={songs} />
