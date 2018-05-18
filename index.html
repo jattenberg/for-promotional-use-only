@@ -117,7 +117,7 @@ class MusicList extends React.Component {
             .map(s => <Song song={s} />);
         const playLists = this.props.songs_map
             .filterNot((v, k) => k === "mixtape" )
-            .map((v, k) => <Playlist title={k.split("/").slice(1).join("/")} songs={v} />);
+            .map((v, k) => <Playlist title={k.split("/").slice(1).join("/")} playlist={v} />);
 
         return (<ul className="list-group">{songs.concat(playLists)}</ul>);
     }
