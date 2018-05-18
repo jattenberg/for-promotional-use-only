@@ -14,25 +14,31 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.6.1/prop-types.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-motion/0.0.3/Spring.min.js"></script>
 <script src="https://unpkg.com/react-responsive-audio-player@1.3.1/dist/audioplayer.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/immutable/3.8.2/immutable.min.js"></script>
 
 
 <script type="text/babel">
 
 class Song extends React.Component {
-    render2() {
+    render() {
         const title = this.props.song.split("/").slice(1).join("/");
         return (<li>
-                    <h3>{title}</h3>
+                    <h3>{title.replace(".mp3", "")}</h3>
                     <audio controls>
                         <source src={this.props.song} type="audio/mpeg"/>
                     </audio>
                 </li>);
     }
-    render() {
-        const songTitle = this.props.song.split("/").slice(1).join("/");
+    render2() {
+        const songTitle = this.props.song
+            .split("/")
+            .slice(1)
+            .join("/")
+            .replace(".mp3", "");
         const playlist = [{url: this.props.song, title:songTitle}];
         
         return (<li>
+                    <h3>{songTitle}</h3>
                     <AudioPlayer playlist={playlist} />
                 </li>);
     }
@@ -41,9 +47,22 @@ class Song extends React.Component {
 
 class Playlist extends React.Component {
     render() {
-        const toPlay = this.props.songs.map(s => ({url: s, title: s.split("/").pop()}));
-        return (<AudioPlayer playlist={toPlay} />);
+        const songs = this.props.songs.map(s => ({url: s, title: s.split("/").pop().replace(".mp3", "")}));
+        return (<li>
+                    <h3>{this.props.title}</h3>
+                    <AudioPlayer playlist={songs} />
+                </li>);
     }
+}
+
+class MusicList extends React.Component {
+    render() {
+        const songs = this.props.songs_map.get("mixtape").map(s => <Song song={s} />);
+        const playLists = this.props.songs_map.map((v, k) => <Playlist title={k.split("/").slice(1).join("/")} songs={v} />);
+
+        return (<ul>{songs.concat(playLists)}</ul>);
+    }
+
 }
 
 
@@ -4546,8 +4565,13 @@ class MusicPage extends React.Component {
 	"mixtape/zodiak-left-over-bicycle-parts-x.mp3",
 	"mixtape/zodiak-left-over-bicycle-parts-y.mp3"];
 
-        const list = songs.map(s => <Song song={s} />);
-        return (<div><ul>{list}</ul></div>);
+        const songsAndPlaylists = Immutable.List(songs)
+            .reduce((acc, x) => acc.update(x.split("/").slice(0, -1).join("/"),
+                                           Immutable.List(),
+                                           value => value.push(x)), 
+                    Immutable.Map());
+
+        return (<div><MusicList songs_map={songsAndPlaylists} /></div>);
     }
 }
 ReactDOM.render(
