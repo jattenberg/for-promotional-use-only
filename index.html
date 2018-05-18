@@ -24,8 +24,8 @@ class Song extends React.Component {
         const title = this.props.song.split("/").slice(1).join("/");
         return (<li>
                     <h3>{title.replace(".mp3", "")}</h3>
-                    <audio controls>
-                        <source src={this.props.song} type="audio/mpeg", preload="none" />
+                    <audio preload="none"  controls>
+                        <source src={this.props.song} type="audio/mpeg" />
                     </audio>
                 </li>);
     }
