@@ -2,10 +2,46 @@
 <head>
     <title>For Promotional Use Only</title>
     <link rel="stylesheet" href="https://unpkg.com/react-responsive-audio-player@1.3.1/dist/audioplayer.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    <style>
+      .App {
+        text-align: center;
+      }
+
+      .App-logo {
+        animation: App-logo-spin infinite 20s linear;
+        height: 80px;
+      }
+
+      .App-header {
+        background-color: #222;
+        height: 150px;
+        padding: 20px;
+        color: white;
+      }
+
+      .App-title {
+        font-size: 1.5em;
+      }
+
+      .App-intro {
+        font-size: large;
+      }
+
+      @keyframes App-logo-spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      body {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
 </head>
 <body>
-    <h1>For Promotional Use Only</h1>
-    <h5>Classic Rave Music from the 90s and Beyond</h5>
 
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/15.4.2/react.js"></script>
@@ -30,7 +66,7 @@ class Song extends React.Component {
             .replace(/^\d{2,}-/g, "")
             .replace(/(\w)\.(\w)/g, '$1 $2');
 
-        return (<li>
+        return (<li className="list-group-item">
                     <h3>{title}</h3>
                     <audio preload="none"  controls>
                         <source src={this.props.song} type="audio/mpeg" />
@@ -49,7 +85,7 @@ class Song extends React.Component {
 
         const playlist = [{url: this.props.song, title:songTitle}];
         
-        return (<li>
+        return (<li className="list-group-item">
                     <h3>{songTitle}</h3>
                     <AudioPlayer playlist={playlist} />
                 </li>);
@@ -67,7 +103,7 @@ class Playlist extends React.Component {
                                                          .replace(/^\d{2,}-/g, "")
                                                          .replace(/(\w)\.(\w)/g, '$1 $2')
                       }));
-        return (<li>
+        return (<li className="list-group-item">
                     <h3>{this.props.title}</h3>
                     <AudioPlayer playlist={songs} />
                 </li>);
@@ -79,7 +115,7 @@ class MusicList extends React.Component {
         const songs = this.props.songs_map.get("mixtape").map(s => <Song song={s} />);
         const playLists = this.props.songs_map.map((v, k) => <Playlist title={k.split("/").slice(1).join("/")} songs={v} />);
 
-        return (<ul>{songs.concat(playLists)}</ul>);
+        return (<ul className="list-group">{songs.concat(playLists)}</ul>);
     }
 
 }
@@ -4590,7 +4626,11 @@ class MusicPage extends React.Component {
                                            value => value.push(x)), 
                     Immutable.Map());
 
-        return (<div><MusicList songs_map={songsAndPlaylists} /></div>);
+        return (<div className="App">
+                  <h1>For Promotional Use Only</h1>
+                  <h5>Classic Rave Music from the 90s and Beyond</h5>
+                  <MusicList songs_map={songsAndPlaylists} />
+                </div>);
     }
 }
 ReactDOM.render(
