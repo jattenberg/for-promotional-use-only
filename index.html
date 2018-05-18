@@ -25,7 +25,7 @@ class Song extends React.Component {
         return (<li>
                     <h3>{title.replace(".mp3", "")}</h3>
                     <audio controls>
-                        <source src={this.props.song} type="audio/mpeg"/>
+                        <source src={this.props.song} type="audio/mpeg", preload="none" />
                     </audio>
                 </li>);
     }
