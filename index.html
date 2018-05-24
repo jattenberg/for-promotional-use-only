@@ -73,23 +73,6 @@ class Song extends React.Component {
                     </audio>
                 </li>);
     }
-    render2() {
-        const songTitle = this.props.song
-            .split("/")
-            .slice(1)
-            .join("/")
-            .replace(".mp3", "")
-            .replace(/_/g, " ")
-            .replace(/^\d{2,}-/g, "")
-            .replace(/(\w)\.(\w)/g, '$1 $2');
-
-        const playlist = [{url: this.props.song, title:songTitle}];
-        
-        return (<li className="list-group-item">
-                    <h3>{songTitle}</h3>
-                    <AudioPlayer playlist={playlist} />
-                </li>);
-    }
 }
 
 
