@@ -1,0 +1,31 @@
+@require './global.styl'
+
+.body-content
+  position relative
+  font-family songTitleFont
+  .total-songs
+    color lighten(black,50)
+    position: absolute;
+    top 0
+    right 3em
+
+ul.songlist
+  font-family songTitleFont
+  list-style-type: none
+  text-align center
+  font-size: 1.2em
+  li.single-song-wrapper
+    padding 10px 2px
+    color darken(alphabetLetter,10)
+    &:hover
+      //background-color: rgba(255,255,255,0.2)
+      cursor: pointer;
+      color alphabetLetter
+      padding-bottom 9px
+      padding-top 9px
+      border-bottom: 1px solid primaryAccentBlue
+      border-top: 1px solid primaryAccentBlue
+    .title
+      position relative
+    &.active
+      background-color: rgba(255,255,255,0.3)
