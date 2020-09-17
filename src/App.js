@@ -9,7 +9,7 @@ class App extends Component {
     super(props);
 
     const defaultState = {
-      activeLetter: "K",
+      activeLetter: "D",
       songList: [],
       favorites: {},
       recentlyPlayed: {}
