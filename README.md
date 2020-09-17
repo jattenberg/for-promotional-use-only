@@ -9,3 +9,10 @@ Critical: make sure the latest version of [Node] (https://nodejs.org/en/) and [N
 ### Running Locally:
 `npm run build`
 `aws s3 cp build/ s3://for-promotional-use-only.com/ --recursive`
+
+
+### adding new songs:
+`aws s3 sync your-folder-with-songs s3://for-promotional-use-only.com/mixtape/`
+
+
+### rebuilding and publishing json files:
