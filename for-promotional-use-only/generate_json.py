@@ -1,4 +1,5 @@
 import boto3
+import os
 import sys
 import logging
 import string
@@ -33,15 +34,19 @@ def song_iterator(bucket=BUCKET,
         if file['Key'] != folder:
             yield file
 
-def pretty_print_json(path, data):
-    with open(path, 'wb') as f:
+def pretty_print_json(path, filename, data):
+    full_path = os.path.join(path, filename)
+    logging.info("writing to %s" % full_path)
+    with open(full_path, 'wb') as f:
         f.write(orjson.dumps(
             data,
             option=orjson.OPT_INDENT_2
         ))
 
 def main():
-    lists = {'#': []}
+    logging.basicConfig(format='%(asctime)s %(message)s', stream=sys.stdout, level="INFO")
+
+    lists = {'NUM': []}
     for letter in LETTERS:
         lists[letter] = []
 
@@ -51,13 +56,12 @@ def main():
             pass
 
         first = name.replace("mixtape/", "")[0].upper()
-        letter = first if first in LETTERS else "#"
+        letter = first if first in LETTERS else "NUM"
 
         lists[letter] = lists[letter] + [name]
 
-    print (orjson.dumps(lists, option=orjson.OPT_INDENT_2))
-    #for key, value in lists.values():
-    #       print 
+    for key, value in lists.items():
+        pretty_print_json(OUT_DIR, "%ssongs.json" % key, value)
 
 
 
