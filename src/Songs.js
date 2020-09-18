@@ -86,6 +86,13 @@ class SingleSong extends Component {
     unfurled: false
   }
 
+  titleCase = (input) => {
+    return input.trim()
+      .split(/\s+/)
+      .map((x) => x.substring(0, 1).toUpperCase() + x.slice(1))
+      .join(" ");
+  }
+
   handleUnfurl = () => {
     this.setState(state => ({ unfurled: !state.unfurled }));
   }
@@ -94,7 +101,12 @@ class SingleSong extends Component {
     let array = song.split("");
     array.splice(0,8); // removes "mixtape"
     array.splice(array.length - 4, array.length); // removes ".mp3"
-    return array.join("");
+    const name = array.join("");
+
+    return this.titleCase(
+      name.replace("_", " ")
+        .replace(/(\w)-(\w)/, (x) => x[0] + " " + x[2])
+    );
   }
 
   toggleDisplaySong = (currentlyPlayingSong) => {
