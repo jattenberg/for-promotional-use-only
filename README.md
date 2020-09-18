@@ -14,5 +14,7 @@ Critical: make sure the latest version of [Node] (https://nodejs.org/en/) and [N
 ### adding new songs:
 `aws s3 sync your-folder-with-songs s3://for-promotional-use-only.com/mixtape/`
 
-
 ### rebuilding and publishing json files:
+`bash build.sh`
+`for-promotional-use-only-virtualenv/bin/python -m for-promotional-use-only.generate_json`
+`aws s3 sync build/json s3://for-promotional-use-only.com/json`
