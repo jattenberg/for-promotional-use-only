@@ -27,3 +27,8 @@ yarn-error.log*
 # python stuff
 *virtualenv
 *egg-info
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
