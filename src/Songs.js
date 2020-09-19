@@ -4,6 +4,28 @@ import AudioPlayer from 'react-responsive-audio-player';
 // for animations
 import Collapse from '@material-ui/core/Collapse';
 
+const titleCase = (input) => {
+  return input.trim()
+    .split(/\s+/)
+    .map((x) => x.substring(0, 1).toUpperCase() + x.slice(1))
+    .join(" ");
+}
+
+const cleanSong = (song) => {
+  return song.replace(/_/g, " ")
+    .replace("mixtape/", "")
+    .replace(".mp4", "")
+    .replace(".mp3", "")
+    .replace(".m4a", "")
+    .replace(/(\w)-(\w)/g, (x) => x[0] + " " + x[2]);
+}
+
+const prepareSongForDisplay = (song) => {
+  return titleCase(
+    cleanSong(song)
+  );
+}
+
 class Songs extends Component {
   /*  javascript `this` scoping is a f*ing shitshow
   constructor(props) {
@@ -70,7 +92,9 @@ class Songs extends Component {
             {songList.length > 0 ? songList.length + " songs" : null}
           </div>
           <ul className="songlist">
-            {songList.map(this.renderSong)}
+            {songList
+               .sort((a, b) => prepareSongForDisplay(a) > prepareSongForDisplay(b))
+               .map(this.renderSong)}
           </ul>
         </div>
       </React.Fragment>
@@ -86,27 +110,12 @@ class SingleSong extends Component {
     unfurled: false
   }
 
-  titleCase = (input) => {
-    return input.trim()
-      .split(/\s+/)
-      .map((x) => x.substring(0, 1).toUpperCase() + x.slice(1))
-      .join(" ");
-  }
-
   handleUnfurl = () => {
     this.setState(state => ({ unfurled: !state.unfurled }));
   }
 
   formatSongTitle = (song) => {
-    let array = song.split("");
-    array.splice(0,8); // removes "mixtape"
-    array.splice(array.length - 4, array.length); // removes ".mp3"
-    const name = array.join("");
-
-    return this.titleCase(
-      name.replace("_", " ")
-        .replace(/(\w)-(\w)/, (x) => x[0] + " " + x[2])
-    );
+    return prepareSongForDisplay(song);
   }
 
   toggleDisplaySong = (currentlyPlayingSong) => {
@@ -154,6 +163,7 @@ class SingleSong extends Component {
     }
     return ( favoriteClass )
   }
+
   handlePlay = (song) => {
     const { toggleAddRemoveRecentlyPlayed } = this.props;
     toggleAddRemoveRecentlyPlayed(song);
