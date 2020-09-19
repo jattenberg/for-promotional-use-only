@@ -4,13 +4,16 @@ import Songs from './Songs';
 import Drawer from './Drawer';
 import ScrollToTop from 'react-scroll-up';
 
+
 class App extends Component {
   constructor(props) {
     super(props);
 
+    const defaultLetter = "K";
+
     const defaultState = {
-      activeLetter: "K",
-      songList: [],
+      activeLetter: defaultLetter,
+      songList: require("./static/json/" + defaultLetter + "songs.json"),
       favorites: {},
       recentlyPlayed: {}
     }
