@@ -18,3 +18,4 @@ Critical: make sure the latest version of [Node] (https://nodejs.org/en/) and [N
 `bash build_python.sh`
 `for-promotional-use-only-virtualenv/bin/python -m for-promotional-use-only.generate_json`
 `aws s3 sync build/json s3://for-promotional-use-only.com/json`
+
