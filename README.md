@@ -7,6 +7,9 @@ This project was bootstrapped with [Create React App](https://github.com/faceboo
 Critical: make sure the latest version of [Node] (https://nodejs.org/en/) and [NPM](https://docs.npmjs.com/troubleshooting/try-the-latest-stable-version-of-npm) are installed.
 
 ### Running Locally:
+`npm run start`
+
+### Deploying
 `npm run build`
 `aws s3 cp build/ s3://for-promotional-use-only.com/ --recursive`
 
@@ -19,3 +22,5 @@ Critical: make sure the latest version of [Node] (https://nodejs.org/en/) and [N
 `for-promotional-use-only-virtualenv/bin/python -m for-promotional-use-only.generate_json`
 `aws s3 sync build/json s3://for-promotional-use-only.com/json`
 
+
+### TODO: dockerize!
