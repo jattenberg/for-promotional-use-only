@@ -21,7 +21,9 @@ class Songs extends Component {
   }
 
   componentDidUpdate(prevProps) {
-    if (prevProps.pendingPlay !== this.props.pendingPlay) {
+    const pendingChanged = prevProps.pendingPlay !== this.props.pendingPlay;
+    const listChanged = prevProps.songList !== this.props.songList;
+    if (pendingChanged || (listChanged && this.props.pendingPlay)) {
       this.applyPendingPlay(this.props.pendingPlay);
     }
   }
@@ -31,10 +33,9 @@ class Songs extends Component {
     if (!pendingPlay || !pendingPlay.path) {
       return;
     }
+    // Cross-letter play briefly keeps the old letter's songList while navigation
+    // loads the target letter. Leave pendingPlay in App until the path appears.
     if (!songList || songList.indexOf(pendingPlay.path) === -1) {
-      if (onPendingPlayConsumed) {
-        onPendingPlayConsumed();
-      }
       return;
     }
     this.setState({

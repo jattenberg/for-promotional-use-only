@@ -117,10 +117,16 @@ class App extends Component {
         if (this.fetchGeneration !== generation) {
           return;
         }
+        const pendingPlay = this.state.pendingPlay;
+        const orphanPending =
+          pendingPlay &&
+          pendingPlay.path &&
+          songListJson.indexOf(pendingPlay.path) === -1;
         this.setState({
           songList: songListJson,
           loading: false,
           error: null,
+          ...(orphanPending ? { pendingPlay: null } : {}),
         });
       })
       .catch((err) => {
