@@ -8,29 +8,87 @@ import {
   prepareSongForDisplay,
 } from './songUtils';
 
+const POSITION_FLUSH_MS = 5000;
+
 class Songs extends Component {
   state = {
-    currentlyPlayingSong: null
+    currentlyPlayingPath: null,
+    seekToSeconds: 0,
   }
 
-  setCurrentlyPlayingSong = index => {
-    this.setState({ currentlyPlayingSong: index});
+  componentDidMount() {
+    this.applyPendingPlay(this.props.pendingPlay);
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.pendingPlay !== this.props.pendingPlay) {
+      this.applyPendingPlay(this.props.pendingPlay);
+    }
+  }
+
+  applyPendingPlay = (pendingPlay) => {
+    const { songList, onPendingPlayConsumed } = this.props;
+    if (!pendingPlay || !pendingPlay.path) {
+      return;
+    }
+    if (!songList || songList.indexOf(pendingPlay.path) === -1) {
+      if (onPendingPlayConsumed) {
+        onPendingPlayConsumed();
+      }
+      return;
+    }
+    this.setState({
+      currentlyPlayingPath: pendingPlay.path,
+      seekToSeconds:
+        typeof pendingPlay.seekTo === 'number' && pendingPlay.seekTo > 0
+          ? pendingPlay.seekTo
+          : 0,
+    });
+    if (onPendingPlayConsumed) {
+      onPendingPlayConsumed();
+    }
+  }
+
+  setCurrentlyPlayingSong = (path) => {
+    this.setState({ currentlyPlayingPath: path, seekToSeconds: 0 });
   }
 
   setNothingPlaying = () => {
-    this.setState({ currentlyPlayingSong: null});
+    this.setState({ currentlyPlayingPath: null, seekToSeconds: 0 });
   }
 
-  setNextSong = (index) =>  {
-    this.setCurrentlyPlayingSong(index + 1);
+  setNextSong = (index, sortedSongList) => {
+    const next = sortedSongList[index + 1];
+    if (next) {
+      this.setCurrentlyPlayingSong(next);
+    } else {
+      this.setNothingPlaying();
+    }
   }
 
-  setPreviousSong = (index) =>  {
-    this.setCurrentlyPlayingSong(index - 1);
+  setPreviousSong = (index, sortedSongList) => {
+    const previous = sortedSongList[index - 1];
+    if (previous) {
+      this.setCurrentlyPlayingSong(previous);
+    } else {
+      this.setNothingPlaying();
+    }
   }
 
-  renderSong = (song, index) => {
-    const { songList, toggleAddRemoveFavorites, favorites, recordPlayed } = this.props;
+  clearSeek = () => {
+    if (this.state.seekToSeconds) {
+      this.setState({ seekToSeconds: 0 });
+    }
+  }
+
+  renderSong = (song, index, sortedSongList) => {
+    const {
+      songList,
+      toggleAddRemoveFavorites,
+      favorites,
+      recordPlayed,
+      updatePlaybackPosition,
+    } = this.props;
 
     return (
       <SingleSong
@@ -38,9 +96,14 @@ class Songs extends Component {
         favorites={favorites}
         toggleAddRemoveFavorites={toggleAddRemoveFavorites}
         recordPlayed={recordPlayed}
-        onNext={() => this.setNextSong(index)}
-        onPrevious={() => this.setPreviousSong(index)}
-        currentlyPlayingSong={this.state.currentlyPlayingSong}
+        updatePlaybackPosition={updatePlaybackPosition}
+        onNext={() => this.setNextSong(index, sortedSongList)}
+        onPrevious={() => this.setPreviousSong(index, sortedSongList)}
+        currentlyPlayingPath={this.state.currentlyPlayingPath}
+        seekToSeconds={
+          this.state.currentlyPlayingPath === song ? this.state.seekToSeconds : 0
+        }
+        onSeekApplied={this.clearSeek}
         setNothingPlaying={this.setNothingPlaying}
         setCurrentlyPlayingSong={this.setCurrentlyPlayingSong}
         song={song}
@@ -59,7 +122,9 @@ class Songs extends Component {
             {sortedSongList.length > 0 ? sortedSongList.length + " songs" : null}
           </div>
           <ul className="songlist">
-            {sortedSongList.map(this.renderSong)}
+            {sortedSongList.map((song, index) =>
+              this.renderSong(song, index, sortedSongList)
+            )}
           </ul>
         </div>
       </React.Fragment>
@@ -81,12 +146,12 @@ class SingleSong extends Component {
     return prepareSongForDisplay(song);
   }
 
-  toggleDisplaySong = (currentlyPlayingSong) => {
-    const { setNothingPlaying, setCurrentlyPlayingSong, index } = this.props;
-    if (currentlyPlayingSong === index) {
-      setNothingPlaying() ;
+  toggleDisplaySong = () => {
+    const { setNothingPlaying, setCurrentlyPlayingSong, song, currentlyPlayingPath } = this.props;
+    if (currentlyPlayingPath === song) {
+      setNothingPlaying();
     } else {
-      setCurrentlyPlayingSong(index);
+      setCurrentlyPlayingSong(song);
     }
   }
 
@@ -95,8 +160,8 @@ class SingleSong extends Component {
   }
 
   shouldRenderAudioPlayer = () => {
-    const { index, currentlyPlayingSong } = this.props;
-    return currentlyPlayingSong === index;
+    const { song, currentlyPlayingPath } = this.props;
+    return currentlyPlayingPath === song;
   }
 
   renderFavoritesCSS = (songPath) => {
@@ -113,6 +178,55 @@ class SingleSong extends Component {
   handlePlay = (songPath) => {
     const { recordPlayed } = this.props;
     recordPlayed(songPath);
+  }
+
+  audioFromEvent = (e) => {
+    if (e && e.target) {
+      return e.target;
+    }
+    return null;
+  }
+
+  flushPosition = (songPath, e, { ended } = { ended: false }) => {
+    const { updatePlaybackPosition } = this.props;
+    if (!updatePlaybackPosition) {
+      return;
+    }
+    const audio = this.audioFromEvent(e);
+    if (!audio) {
+      return;
+    }
+    if (ended) {
+      updatePlaybackPosition(songPath, 0, audio.duration);
+      return;
+    }
+    updatePlaybackPosition(songPath, audio.currentTime, audio.duration);
+  }
+
+  handleTimeUpdate = (songPath, e) => {
+    const now = Date.now();
+    if (this._lastPosWrite && now - this._lastPosWrite < POSITION_FLUSH_MS) {
+      return;
+    }
+    this._lastPosWrite = now;
+    this.flushPosition(songPath, e);
+  }
+
+  handleLoadedMetadata = (e) => {
+    const { seekToSeconds, onSeekApplied } = this.props;
+    const audio = this.audioFromEvent(e);
+    if (!audio || !seekToSeconds || seekToSeconds <= 0) {
+      return;
+    }
+    const duration = Number(audio.duration);
+    const capped =
+      Number.isFinite(duration) && duration > 0
+        ? Math.min(seekToSeconds, Math.max(duration - 0.25, 0))
+        : seekToSeconds;
+    audio.currentTime = capped;
+    if (onSeekApplied) {
+      onSeekApplied();
+    }
   }
 
   playPreviousTrack = () =>  {
@@ -152,7 +266,13 @@ class SingleSong extends Component {
       <div className="relative">
         <div className="" onClick={ stopChildClickPropagation }>
           <AudioPlayer autoplay autoplayDelayInSeconds={0.5} ref={this.getAudioPlayerRef} cycle={false} playlist={playlist}
-                       onMediaEvent={{"play": () => this.handlePlay(song)}}
+                       onMediaEvent={{
+                         play: () => this.handlePlay(song),
+                         timeupdate: (e) => this.handleTimeUpdate(song, e),
+                         pause: (e) => this.flushPosition(song, e),
+                         ended: (e) => this.flushPosition(song, e, { ended: true }),
+                         loadedmetadata: (e) => this.handleLoadedMetadata(e),
+                       }}
           />
         </div>
         <div className="clearfix favorite-download" onClick={ stopChildClickPropagation }>
@@ -167,7 +287,7 @@ class SingleSong extends Component {
   }
 
   render = () => {
-    const { song, index, currentlyPlayingSong } = this.props;
+    const { song } = this.props;
     let songTitle = this.formatSongTitle(song);
 
     let url = mediaUrl(song);
@@ -176,9 +296,8 @@ class SingleSong extends Component {
     return (
       <li
         className={"single-song-wrapper " + (this.shouldRenderAudioPlayer() ? "active" : "")}
-        key={song + "-" + index}
-        index={song + "-" + index}
-        onClick= { (e)=> this.toggleDisplaySong(currentlyPlayingSong) }
+        key={song}
+        onClick={ () => this.toggleDisplaySong() }
         >
         <span className="title">{songTitle}</span>
           <Collapse in={this.shouldRenderAudioPlayer()} unmountOnExit timeout={{enter:300, exit:500}}>

@@ -5,6 +5,7 @@ import {
   letterFromRoute,
   mediaUrl,
   prepareSongForDisplay,
+  resumeSeekSeconds,
 } from './songUtils';
 
 describe('prepareSongForDisplay', () => {
@@ -72,5 +73,27 @@ describe('letterFromRoute', () => {
 describe('cleanSong', () => {
   it('strips mixtape prefix and extension', () => {
     expect(cleanSong('mixtape/foo_bar.mp3')).toBe('foo bar');
+  });
+});
+
+describe('resumeSeekSeconds', () => {
+  it('returns 0 for missing or non-positive positions', () => {
+    expect(resumeSeekSeconds(null, 100)).toBe(0);
+    expect(resumeSeekSeconds(undefined, 100)).toBe(0);
+    expect(resumeSeekSeconds(0, 100)).toBe(0);
+    expect(resumeSeekSeconds(-3, 100)).toBe(0);
+  });
+
+  it('returns the saved position mid-track', () => {
+    expect(resumeSeekSeconds(42.5, 120)).toBe(42.5);
+  });
+
+  it('restarts near the end of a track', () => {
+    expect(resumeSeekSeconds(97, 100)).toBe(0);
+    expect(resumeSeekSeconds(100, 100)).toBe(0);
+  });
+
+  it('keeps position when duration is unknown', () => {
+    expect(resumeSeekSeconds(30, null)).toBe(30);
   });
 });
