@@ -208,6 +208,13 @@ class App extends Component {
     const duration =
       Number.isFinite(nextDuration) && nextDuration > 0 ? nextDuration : null;
 
+    // Ignore near-zero writes that would wipe a meaningful saved offset
+    // (common when a new <audio> starts at t=0 before resume seek applies).
+    const previousPosition = Number(existing.positionSeconds) || 0;
+    if (position < 1 && previousPosition > 5) {
+      return;
+    }
+
     if (
       existing.positionSeconds === position &&
       existing.durationSeconds === duration
