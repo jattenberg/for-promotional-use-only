@@ -27,5 +27,29 @@ ul.songlist
       border-top: 1px solid primaryAccentBlue
     .title
       position relative
+      display inline-flex
+      align-items center
+      gap 0.4em
+    .song-play-control
+      display inline-flex
+      align-items center
+      justify-content center
+      margin 0
+      padding 0.15em 0.35em
+      border 0
+      background transparent
+      color inherit
+      cursor pointer
+      line-height 1
+      &:hover .song-play-indicator
+        color lighten(primaryAccentBlue, 20)
+      &:focus
+        outline 1px solid primaryAccentBlue
+        outline-offset 2px
+    .song-play-indicator
+      font-size 0.7em
+      color primaryAccentBlue
+    &.expanded
+      background-color: rgba(255,255,255,0.18)
     &.active
       background-color: rgba(255,255,255,0.3)

@@ -47,32 +47,22 @@ audioProgressBg = #47ade4
     box-shadow: inset 1px 1px 14px 0px rgba(0,0,0,0.45);
 
 .favorite-download
-  position absolute
-  right 4em
-  font-size 1.5em
-  top 26%
   color darken(favoriteDownloadIcons, 8)
   .favorite, .download
     position relative
-    //box-shadow: inset 1px 1px 10px 0px rgba(0,0,0,0.15)
     &:hover
       color lighten(alphabetLetter,10)
       color #d10099
   .favorite
     float left
     margin-right 0.5em
+    cursor pointer
     &:active
       color alphabetLetter
       color #d10099
       top 2px
     .fas
       &:active
-        //background-color: #565656;
-        //color: transparent;
-        //text-shadow: 2px 2px 3px rgba(255,255,255,0.5);
-        //-webkit-background-clip: text;
-        //-moz-background-clip: text;
-        //background-clip: text;
         color #d10099
   .already-favorited
     color #d10099
@@ -81,3 +71,133 @@ audioProgressBg = #47ade4
       color lighten(#d10099,10)
   .download
     float left
+
+.favorite-download--row
+  display inline-block
+  position relative
+  margin-top 0.35em
+  font-size 1.15em
+
+.bottom-playback-bar
+  position fixed
+  left 0
+  right 0
+  bottom 0
+  z-index 40
+  display flex
+  flex-wrap wrap
+  align-items center
+  gap 0.75em 1em
+  padding 0.65em 1em
+  background-color playerBg
+  box-shadow 0 -2px 12px rgba(0,0,0,0.18)
+  box-sizing border-box
+  min-height 4.5em
+
+.bottom-playback-bar--idle
+  justify-content center
+  flex-direction column
+  gap 0.15em
+  .bottom-playback-bar__title
+    color playerText
+    font-size 0.95em
+  .bottom-playback-bar__idle-hint
+    color #666
+    font-size 0.8em
+
+.bottom-playback-bar__meta
+  display flex
+  align-items center
+  gap 0.65em
+  min-width 12em
+  max-width 100%
+  flex 0 1 18em
+
+.bottom-playback-bar__title
+  flex 1
+  min-width 0
+  overflow hidden
+  text-overflow ellipsis
+  white-space nowrap
+  color playerText
+  font-family songTitleFont
+  font-size 0.95em
+
+.bottom-playback-bar__actions
+  display flex
+  align-items center
+  gap 0.45em
+  font-size 1.25em
+  color darken(favoriteDownloadIcons, 8)
+  a
+    color inherit
+  .favorite, .download
+    cursor pointer
+    &:hover
+      color #d10099
+  .already-favorited
+    color #d10099
+
+.bottom-playback-bar__player
+  flex 1 1 18em
+  min-width 0
+  .audio_player
+    width 100%
+    margin 0
+    background-color transparent
+    box-shadow none
+  .audio_info
+    display none
+  .audio_time_progress
+    color white
+    font-size 1.0em
+    text-shadow 1px 1px 8px rgba(0,0,0,0.5)
+    padding 0 5px
+  .audio_progress
+    background-color hsla(197,76.5,35.1, 1)
+    box-shadow inset 1px 1px 14px 0px rgba(0,0,0,0.45)
+  .audio_progress_container
+    background-color audioProgressBg
+    box-shadow inset 1px 1px 14px 0px rgba(0,0,0,0.45)
+  .right_facing_triangle
+    border-left 16px solid playerControls
+  .play_pause_inner
+    .left, .right
+      background-color playerControls
+    .triangle_1
+      border-right 30px solid playerBg
+    .triangle_2
+      border-right 30px solid playerBg
+
+.bottom-playback-eq
+  display flex
+  align-items flex-end
+  gap 2px
+  height 14px
+  flex-shrink 0
+  span
+    display block
+    width 3px
+    height 4px
+    background-color playerControls
+    opacity 0.45
+    transition height 0.15s ease
+
+.bottom-playback-eq--playing span
+  opacity 1
+  animation eq-bounce 0.7s ease-in-out infinite alternate
+  &:nth-child(2)
+    animation-delay 0.12s
+  &:nth-child(3)
+    animation-delay 0.24s
+  &:nth-child(4)
+    animation-delay 0.08s
+
+@keyframes eq-bounce
+  from
+    height 4px
+  to
+    height 14px
+
+.has-bottom-playback
+  padding-bottom 6.5em
