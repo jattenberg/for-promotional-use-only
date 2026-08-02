@@ -373,16 +373,7 @@ class Header extends Component {
           <div className="social-media">
             <ul>
               <li>
-                <a href=""><i className="fab fa-twitter"></i></a>
-              </li>
-              <li>
-                <a href="" ><i className="fab fa-facebook"></i></a>
-              </li>
-              <li>
-                <a href="" ><i className="fas fa-share-square"></i></a>
-              </li>
-              <li>
-                <a href="" ><i className="far fa-envelope"></i></a>
+                <a href="mailto:josh@attenberg.org"><i className="far fa-envelope"></i></a>
               </li>
             </ul>
           </div>
