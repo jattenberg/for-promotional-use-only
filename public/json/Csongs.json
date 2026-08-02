@@ -354,6 +354,27 @@
   ],
   "albums": [
     {
+      "id": "CoverCDs/ATM Mag 61 - Artificial Intelligence and MC Lowqui",
+      "title": "ATM Mag 61 - Artificial Intelligence and MC Lowqui",
+      "tracks": [
+        "mixtape/CoverCDs/ATM Mag 61 - Artificial Intelligence and MC Lowqui/01 ATM 61 - Artifical Intelligence.mp3"
+      ]
+    },
+    {
+      "id": "CoverCDs/Knowledge Magazine 11 Substance",
+      "title": "Knowledge Magazine 11 Substance",
+      "tracks": [
+        "mixtape/CoverCDs/Knowledge Magazine 11 Substance/01 Substance Mix.mp3"
+      ]
+    },
+    {
+      "id": "CoverCDs/Knowledge Magazine 13 Technique Recordings Distortion in Sound",
+      "title": "Knowledge Magazine 13 Technique Recordings Distortion in Sound",
+      "tracks": [
+        "mixtape/CoverCDs/Knowledge Magazine 13 Technique Recordings Distortion in Sound/01 Technique Recacordings presents D.mp3"
+      ]
+    },
+    {
       "id": "CoverCDs/Knowledge Magazine 17 Stakka and Skynet",
       "title": "Knowledge Magazine 17 Stakka and Skynet",
       "tracks": [
@@ -368,6 +389,13 @@
         "mixtape/CoverCDs/Knowledge Magazine 17 Stakka and Skynet/09 Underfire vs Negative - Bios-Fear.mp3",
         "mixtape/CoverCDs/Knowledge Magazine 17 Stakka and Skynet/10 Skynet & Stakka - Logistics.mp3",
         "mixtape/CoverCDs/Knowledge Magazine 17 Stakka and Skynet/11 Stakka & K. Tee - Auto Ignition.mp3"
+      ]
+    },
+    {
+      "id": "CoverCDs/Knowledge Magazine 32 DJ Ron RE_Code",
+      "title": "Knowledge Magazine 32 DJ Ron RE_Code",
+      "tracks": [
+        "mixtape/CoverCDs/Knowledge Magazine 32 DJ Ron RE_Code/Knowledge Magazine DJ Ron.mp3"
       ]
     },
     {
@@ -415,6 +443,27 @@
         "mixtape/CoverCDs/Knowledge Magazine 34 Mixologists Flip The Script/19 The Insiders - Push It.mp3",
         "mixtape/CoverCDs/Knowledge Magazine 34 Mixologists Flip The Script/20 Krust & Die - Ultimate.mp3",
         "mixtape/CoverCDs/Knowledge Magazine 34 Mixologists Flip The Script/21 Pendulum - Trail Of Sevens.mp3"
+      ]
+    },
+    {
+      "id": "CoverCDs/Knowledge Magazine 43 The DJ Vs the Drummer",
+      "title": "Knowledge Magazine 43 The DJ Vs the Drummer",
+      "tracks": [
+        "mixtape/CoverCDs/Knowledge Magazine 43 The DJ Vs the Drummer/01 The DJ Vs The Drummer.mp3"
+      ]
+    },
+    {
+      "id": "CoverCDs/Knowledge Magazine 44 Inperspective Records",
+      "title": "Knowledge Magazine 44 Inperspective Records",
+      "tracks": [
+        "mixtape/CoverCDs/Knowledge Magazine 44 Inperspective Records/01 Inperspective Records In The Mix.mp3"
+      ]
+    },
+    {
+      "id": "CoverCDs/Knowledge Magazine 46 Distorted Minds",
+      "title": "Knowledge Magazine 46 Distorted Minds",
+      "tracks": [
+        "mixtape/CoverCDs/Knowledge Magazine 46 Distorted Minds/01 Distorted Minds KNOW46.mp3"
       ]
     },
     {

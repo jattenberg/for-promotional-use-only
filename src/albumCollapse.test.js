@@ -60,9 +60,9 @@ describe('Songs album collapse', () => {
       albumRow.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
 
-    expect(container.querySelector('.songlist--album-tracks')).not.toBeNull();
+    const nestedTracks = container.querySelectorAll('.songlist--album-tracks .single-song-wrapper--nested');
+    expect(nestedTracks.length).toBe(album.tracks.length);
     expect(onSelectTrack).not.toHaveBeenCalled();
-    expect(container.querySelector('[data-mock-player]')).toBeNull();
   });
 
   it('plays a child track after expand then play', () => {

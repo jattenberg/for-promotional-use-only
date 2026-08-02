@@ -1,8 +1,10 @@
 import React, { Component } from 'react';
 import {
   buildDisplayRows,
+  findAlbumIdForTrack,
   mediaUrl,
   prepareSongForDisplay,
+  prepareTrackTitle,
 } from './songUtils';
 
 /**
@@ -18,13 +20,19 @@ class Songs extends Component {
   toggleAlbum = (albumId) => {
     this.setState((state) => ({
       expandedAlbumId: state.expandedAlbumId === albumId ? null : albumId,
+      expandedPath: null,
     }));
   }
 
   expandSong = (songPath) => {
-    this.setState((state) => ({
-      expandedPath: state.expandedPath === songPath ? null : songPath,
-    }));
+    const parentAlbumId = findAlbumIdForTrack(this.props.albums, songPath);
+    this.setState((state) => {
+      const nextExpanded = state.expandedPath === songPath ? null : songPath;
+      return {
+        expandedPath: nextExpanded,
+        expandedAlbumId: parentAlbumId || state.expandedAlbumId,
+      };
+    });
   }
 
   playSong = (event, songPath) => {
@@ -70,7 +78,7 @@ class Songs extends Component {
     const { expandedPath } = this.state;
     const isExpanded = expandedPath === song;
     const isPlaying = currentlyPlayingPath === song;
-    const songTitle = prepareSongForDisplay(song);
+    const songTitle = nested ? prepareTrackTitle(song) : prepareSongForDisplay(song);
     const songSrc = mediaUrl(song);
     const favoriteClass =
       favorites && favorites.hasOwnProperty(song)
@@ -99,10 +107,10 @@ class Songs extends Component {
               aria-label={`Play ${songTitle}`}
               onClick={(event) => this.playSong(event, song)}
             >
-              <i className="song-play-indicator fa fa-play" aria-hidden="true" />
+              <i className="song-play-indicator fas fa-play" aria-hidden="true" />
             </button>
           ) : isPlaying ? (
-            <i className="song-play-indicator fa fa-play" aria-hidden="true" />
+            <i className="song-play-indicator fas fa-play" aria-hidden="true" />
           ) : null}
           {songTitle}
         </span>
@@ -130,7 +138,10 @@ class Songs extends Component {
       .join(' ');
 
     return (
-      <li className="album-group" key={`album-${album.id}`}>
+      <li
+        className={'album-group' + (isExpanded ? ' album-group--expanded' : '')}
+        key={`album-${album.id}`}
+      >
         <div
           className={rowClass}
           onClick={() => this.toggleAlbum(album.id)}
@@ -146,11 +157,11 @@ class Songs extends Component {
         >
           <span className="title">
             {isActive ? (
-              <i className="song-play-indicator fa fa-play" aria-hidden="true" />
+              <i className="song-play-indicator fas fa-play" aria-hidden="true" />
             ) : (
               <i
                 className={
-                  'album-expand-indicator fa fa-' + (isExpanded ? 'minus' : 'plus')
+                  'album-expand-indicator fas fa-' + (isExpanded ? 'minus' : 'plus')
                 }
                 aria-hidden="true"
               />
@@ -160,7 +171,7 @@ class Songs extends Component {
           <span className="album-track-count">{trackLabel}</span>
         </div>
         {isExpanded ? (
-          <ul className="songlist songlist--album-tracks">
+          <ul className="songlist--album-tracks">
             {album.tracks.map((track) =>
               this.renderTrackRow(track, { nested: true })
             )}
@@ -171,8 +182,8 @@ class Songs extends Component {
   }
 
   render() {
-    const { songList } = this.props;
-    const displayRows = buildDisplayRows(songList, this.props.albums);
+    const { songList, albums } = this.props;
+    const displayRows = buildDisplayRows(songList, albums || []);
     return (
       <div className="body-content">
         <div className="total-songs">

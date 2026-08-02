@@ -97,7 +97,7 @@ def album_title_from_id(album_id):
 
 
 def should_collapse_parent(parent_dir, track_paths):
-    if len(track_paths) < 2:
+    if not track_paths:
         return False
 
     basenames = [basename_for_key(path) for path in track_paths]
@@ -105,6 +105,9 @@ def should_collapse_parent(parent_dir, track_paths):
 
     if in_cover_cds:
         return True
+
+    if len(track_paths) < 2:
+        return False
 
     commercial_matches = sum(1 for name in basenames if is_commercial_numbered_track(name))
     if commercial_matches / len(basenames) < 0.7:
