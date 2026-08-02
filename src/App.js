@@ -4,7 +4,11 @@ import Songs from './Songs';
 import Drawer from './Drawer';
 import ScrollToTop from 'react-scroll-up';
 import NotFound from './NotFound';
-import { letterFromRoute, prepareSongForDisplay } from './songUtils';
+import {
+  letterFromRoute,
+  letterToRoute,
+  prepareSongForDisplay,
+} from './songUtils';
 
 const STATE_KEY = 'state.v2';
 const RECENTS_CAP = 50;
@@ -16,6 +20,10 @@ const defaultState = () => ({
   recentlyPlayed: {},
   loading: false,
   error: null,
+  searchQuery: '',
+  searchIndex: null,
+  searchIndexError: null,
+  searchIndexLoading: false,
 });
 
 const loadPersistedState = () => {
@@ -49,6 +57,7 @@ class App extends Component {
       activeLetter: routeLetter || 'K',
     };
     this.fetchGeneration = 0;
+    this.searchIndexPromise = null;
   }
 
   componentDidMount() {
@@ -91,6 +100,7 @@ class App extends Component {
       loading: true,
       error: null,
       activeLetter: letter,
+      searchQuery: '',
     });
 
     fetch(`${process.env.PUBLIC_URL}/json/${letter}songs.json`)
@@ -180,6 +190,60 @@ class App extends Component {
     this.setState({ recentlyPlayed });
   }
 
+  ensureSearchIndex = () => {
+    if (this.state.searchIndex || this.state.searchIndexError) {
+      return;
+    }
+    if (this.searchIndexPromise) {
+      return;
+    }
+    this.setState({ searchIndexLoading: true });
+    this.searchIndexPromise = fetch(`${process.env.PUBLIC_URL}/json/index.json`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Search index unavailable (${response.status})`);
+        }
+        return response.json();
+      })
+      .then((searchIndex) => {
+        this.setState({
+          searchIndex,
+          searchIndexLoading: false,
+          searchIndexError: null,
+        });
+      })
+      .catch((err) => {
+        this.setState({
+          searchIndexLoading: false,
+          searchIndexError: err.message || 'Search unavailable',
+        });
+        this.searchIndexPromise = null;
+      });
+  }
+
+  handleSearchChange = (e) => {
+    this.setState({ searchQuery: e.target.value });
+  }
+
+  jumpToLetter = (letter) => {
+    this.props.history.push('/' + letterToRoute(letter));
+  }
+
+  searchResults = () => {
+    const { searchQuery, searchIndex } = this.state;
+    const query = searchQuery.trim().toLowerCase();
+    if (!query || !searchIndex) {
+      return [];
+    }
+    return searchIndex
+      .map((entry) => ({
+        ...entry,
+        title: prepareSongForDisplay(entry.path),
+      }))
+      .filter((entry) => entry.title.toLowerCase().indexOf(query) !== -1)
+      .slice(0, 50);
+  }
+
   renderDrawer = () => {
     const { favorites, recentlyPlayed } = this.state;
     const favoritesLength = Object.keys(favorites).length;
@@ -196,8 +260,60 @@ class App extends Component {
     }
   }
 
+  renderSearch = () => {
+    const {
+      searchQuery,
+      searchIndexError,
+      searchIndexLoading,
+    } = this.state;
+    const results = this.searchResults();
+    const queryActive = searchQuery.trim().length > 0;
+
+    return (
+      <div className="search-wrapper">
+        <input
+          type="search"
+          className="song-search"
+          placeholder="Search all mixtapes…"
+          value={searchQuery}
+          disabled={!!searchIndexError}
+          onFocus={this.ensureSearchIndex}
+          onChange={this.handleSearchChange}
+        />
+        {searchIndexError ? (
+          <p className="search-status">{searchIndexError}</p>
+        ) : null}
+        {searchIndexLoading ? (
+          <p className="search-status">Loading search index…</p>
+        ) : null}
+        {queryActive && !searchIndexError ? (
+          <ul className="search-results">
+            {results.length === 0 ? (
+              <li className="search-empty">No matches</li>
+            ) : (
+              results.map((entry) => (
+                <li key={entry.path}>
+                  <span className="search-title">{entry.title}</span>
+                  <button
+                    type="button"
+                    onClick={() => this.jumpToLetter(entry.letter)}
+                  >
+                    Go to {entry.letter === 'NUM' ? '#' : entry.letter}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        ) : null}
+      </div>
+    );
+  }
+
   renderSongsArea = () => {
-    const { loading, error, songList, favorites } = this.state;
+    const { loading, error, songList, favorites, searchQuery } = this.state;
+    if (searchQuery.trim()) {
+      return null;
+    }
     if (loading) {
       return <div className="body-content">Loading…</div>;
     }
@@ -235,6 +351,7 @@ class App extends Component {
           <Header />
           <AlphabetMenu activeLetter={this.state.activeLetter}/>
           { this.renderDrawer() }
+          { this.renderSearch() }
           { this.renderSongsArea() }
         </div>
         <ScrollToTop showUnder={160}>
