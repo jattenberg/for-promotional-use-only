@@ -6,7 +6,7 @@ import BottomPlaybackBar from './BottomPlaybackBar';
 import ScrollToTop from 'react-scroll-up';
 import NotFound from './NotFound';
 import {
-  compareSongsForDisplay,
+  buildNavigationOrder,
   letterForSongKey,
   letterFromRoute,
   letterToRoute,
@@ -345,13 +345,14 @@ class App extends Component {
     }
   }
 
-  sortedSongList = () => {
-    return [...this.state.songList].sort(compareSongsForDisplay);
+  navigationSongList = () => {
+    const { songList, albums } = this.state;
+    return buildNavigationOrder(songList, albums);
   }
 
   playAdjacentTrack = (offset) => {
     const { currentlyPlayingPath } = this.state;
-    const sorted = this.sortedSongList();
+    const sorted = this.navigationSongList();
     if (!sorted.length) {
       this.clearPlayback();
       return;

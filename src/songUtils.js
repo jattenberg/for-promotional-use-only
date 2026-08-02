@@ -27,6 +27,40 @@ export const compareSongsForDisplay = (a, b) => {
 /**
  * Normalize letter JSON payloads from legacy flat arrays or album-aware objects.
  */
+/**
+ * Build sorted playlist rows: album parents (by title) and orphan tracks (by display title).
+ */
+export const buildDisplayRows = (songList, albums) => {
+  const inAlbum = albums.reduce(
+    (paths, album) =>
+      album.tracks.reduce((acc, track) => ({ ...acc, [track]: true }), paths),
+    {}
+  );
+  const orphanTracks = songList.filter((path) => !inAlbum[path]);
+  const rows = [
+    ...albums.map((album) => ({
+      type: 'album',
+      album,
+      sortKey: album.title,
+    })),
+    ...orphanTracks.map((path) => ({
+      type: 'track',
+      path,
+      sortKey: prepareSongForDisplay(path),
+    })),
+  ];
+  return rows.sort((left, right) => left.sortKey.localeCompare(right.sortKey));
+};
+
+/**
+ * Flat play order for prev/next: album tracks stay grouped in catalog order.
+ */
+export const buildNavigationOrder = (songList, albums) => {
+  return buildDisplayRows(songList, albums).flatMap((row) =>
+    row.type === 'album' ? row.album.tracks : [row.path]
+  );
+};
+
 export const parseLetterPayload = (payload) => {
   if (Array.isArray(payload)) {
     return { tracks: payload, albums: [] };

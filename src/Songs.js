@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import {
+  buildDisplayRows,
   mediaUrl,
   prepareSongForDisplay,
 } from './songUtils';
@@ -12,34 +13,6 @@ class Songs extends Component {
   state = {
     expandedAlbumId: null,
     expandedPath: null,
-  }
-
-  albumTrackPaths = () => {
-    const { albums } = this.props;
-    return albums.reduce(
-      (paths, album) =>
-        album.tracks.reduce((acc, track) => ({ ...acc, [track]: true }), paths),
-      {}
-    );
-  }
-
-  buildDisplayRows = () => {
-    const { songList, albums } = this.props;
-    const inAlbum = this.albumTrackPaths();
-    const orphanTracks = songList.filter((path) => !inAlbum[path]);
-    const rows = [
-      ...albums.map((album) => ({
-        type: 'album',
-        album,
-        sortKey: album.title,
-      })),
-      ...orphanTracks.map((path) => ({
-        type: 'track',
-        path,
-        sortKey: prepareSongForDisplay(path),
-      })),
-    ];
-    return rows.sort((left, right) => left.sortKey.localeCompare(right.sortKey));
   }
 
   toggleAlbum = (albumId) => {
@@ -199,7 +172,7 @@ class Songs extends Component {
 
   render() {
     const { songList } = this.props;
-    const displayRows = this.buildDisplayRows();
+    const displayRows = buildDisplayRows(songList, this.props.albums);
     return (
       <div className="body-content">
         <div className="total-songs">
