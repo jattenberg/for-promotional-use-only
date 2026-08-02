@@ -13,6 +13,9 @@ class BottomPlaybackBar extends Component {
   constructor(props) {
     super(props);
     this.audioEl = null;
+    // React commits the incoming currentPath before detaching the outgoing
+    // audio element's ref, so flushes must use the path that element loaded.
+    this.audioElPath = null;
     this.audioPlayerRef = null;
     this._didSeek = false;
     this._lastPosWrite = 0;
@@ -63,21 +66,24 @@ class BottomPlaybackBar extends Component {
 
   flushFromElement = (audio, { ended } = { ended: false }) => {
     const { updatePlaybackPosition, currentPath, seekToSeconds } = this.props;
-    if (!updatePlaybackPosition || !audio || !currentPath) {
+    const trackPath = this.audioElPath || currentPath;
+    if (!updatePlaybackPosition || !audio || !trackPath) {
       return;
     }
-    if (seekToSeconds > 0 && !this._didSeek && !ended) {
+    const awaitingSeek =
+      trackPath === currentPath && seekToSeconds > 0 && !this._didSeek;
+    if (awaitingSeek && !ended) {
       return;
     }
     if (ended) {
-      updatePlaybackPosition(currentPath, 0, audio.duration);
+      updatePlaybackPosition(trackPath, 0, audio.duration);
       return;
     }
     const position = Number(audio.currentTime);
     if (!Number.isFinite(position) || position < 0) {
       return;
     }
-    updatePlaybackPosition(currentPath, position, audio.duration);
+    updatePlaybackPosition(trackPath, position, audio.duration);
   }
 
   audioFromEvent = (e) => {
@@ -169,6 +175,7 @@ class BottomPlaybackBar extends Component {
     }
     this.audioEl = audio;
     if (audio) {
+      this.audioElPath = this.props.currentPath;
       this._didSeek = false;
       this.trySeek(audio);
     }

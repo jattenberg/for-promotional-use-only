@@ -372,6 +372,55 @@ describe('BottomPlaybackBar callbacks', () => {
     expect(updatePlaybackPosition).toHaveBeenCalledWith(songA, 0, 100);
   });
 
+  const renderBar = (currentPath, { seekToSeconds = 0, updatePlaybackPosition }) => {
+    let bar;
+    act(() => {
+      ReactDOM.render(
+        <BottomPlaybackBar
+          ref={(node) => {
+            bar = node || bar;
+          }}
+          currentPath={currentPath}
+          seekToSeconds={seekToSeconds}
+          favorites={{}}
+          toggleAddRemoveFavorites={jest.fn()}
+          recordPlayed={jest.fn()}
+          updatePlaybackPosition={updatePlaybackPosition}
+          onSeekApplied={jest.fn()}
+          onNext={jest.fn()}
+          onPrevious={jest.fn()}
+        />,
+        container
+      );
+    });
+    return bar;
+  };
+
+  it('credits the teardown flush to the outgoing track, not the incoming one', () => {
+    const updatePlaybackPosition = jest.fn();
+    const bar = renderBar(songA, { updatePlaybackPosition });
+    bar.audioEl.currentTime = 47;
+
+    renderBar(songB, { updatePlaybackPosition });
+
+    expect(updatePlaybackPosition).toHaveBeenCalledWith(songA, 47, 120);
+    expect(updatePlaybackPosition).not.toHaveBeenCalledWith(
+      songB,
+      expect.anything(),
+      expect.anything()
+    );
+  });
+
+  it('still flushes the outgoing track when the incoming track has a pending seek', () => {
+    const updatePlaybackPosition = jest.fn();
+    const bar = renderBar(songA, { updatePlaybackPosition });
+    bar.audioEl.currentTime = 47;
+
+    renderBar(songB, { seekToSeconds: 12, updatePlaybackPosition });
+
+    expect(updatePlaybackPosition).toHaveBeenCalledWith(songA, 47, 120);
+  });
+
   it('seeks to the resume offset then clears via onSeekApplied', () => {
     const onSeekApplied = jest.fn();
     let bar;
