@@ -287,15 +287,23 @@ class App extends Component {
       this.props.match && this.props.match.params && this.props.match.params.letter
     );
 
+    // A deferred request supersedes the loaded track: stop it now instead of
+    // playing on while the target letter's song list loads.
+    const deferred = {
+      pendingPlay,
+      currentlyPlayingPath: null,
+      seekToSeconds: 0,
+    };
+
     if (routeLetter !== letter) {
-      this.setState({ pendingPlay }, () => {
+      this.setState(deferred, () => {
         this.props.history.push('/' + letterToRoute(letter));
       });
       return;
     }
 
     if (this.state.songList.indexOf(songPath) === -1) {
-      this.setState({ pendingPlay });
+      this.setState(deferred);
       return;
     }
 
