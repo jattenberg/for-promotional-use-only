@@ -14,11 +14,12 @@ ul.songlist
   list-style-type: none
   text-align center
   font-size: 1.2em
+  padding 0
+  margin 0
   li.single-song-wrapper
     padding 10px 2px
     color darken(alphabetLetter,10)
     &:hover
-      //background-color: rgba(255,255,255,0.2)
       cursor: pointer;
       color alphabetLetter
       padding-bottom 9px
@@ -57,20 +58,42 @@ ul.songlist
     list-style-type none
     margin 0
     padding 0
-  li.single-song-wrapper--album
-    .album-track-count
+    text-align center
+    > .single-song-wrapper--album
+      padding 10px 2px
+      color darken(alphabetLetter,10)
+      cursor pointer
+      &:hover
+        color alphabetLetter
+        padding-bottom 9px
+        padding-top 9px
+        border-bottom 1px solid primaryAccentBlue
+        border-top 1px solid primaryAccentBlue
+      &.expanded
+        background-color rgba(255,255,255,0.18)
+      &.active
+        background-color rgba(255,255,255,0.3)
+      .title
+        position relative
+        display inline-flex
+        align-items center
+        gap 0.4em
+      .album-track-count
+        display block
+        font-size 0.75em
+        color lighten(black, 35)
+        margin-top 0.15em
+      .album-expand-indicator
+        font-size 0.65em
+        color primaryAccentBlue
+        pointer-events none
+    ul.songlist--album-tracks
+      list-style-type none
+      margin 0.25em 0 0.5em
+      padding 0
       display block
-      font-size 0.75em
-      color lighten(black, 35)
-      margin-top 0.15em
-    .album-expand-indicator
-      font-size 0.65em
-      color primaryAccentBlue
-  ul.songlist--album-tracks
-    list-style-type none
-    margin 0
-    padding 0
-    li.single-song-wrapper--nested
-      padding-left 1.4em
-      font-size 0.95em
-      text-align left
+      li.single-song-wrapper--nested
+        display block
+        padding 8px 2px 8px 1.4em
+        font-size 0.95em
+        text-align left

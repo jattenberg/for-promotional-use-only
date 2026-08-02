@@ -6,6 +6,7 @@ import {
   letterFromRoute,
   mediaUrl,
   prepareSongForDisplay,
+  prepareTrackTitle,
   resumeSeekSeconds,
 } from './songUtils';
 
@@ -74,6 +75,16 @@ describe('letterFromRoute', () => {
 describe('cleanSong', () => {
   it('strips mixtape prefix and extension', () => {
     expect(cleanSong('mixtape/foo_bar.mp3')).toBe('foo bar');
+  });
+});
+
+describe('prepareTrackTitle', () => {
+  it('uses the filename only for nested album rows', () => {
+    expect(
+      prepareTrackTitle(
+        'mixtape/CoverCDs/Knowledge Magazine 33 Phuturistic Bluez/01 Regret.mp3'
+      )
+    ).toBe('01 Regret');
   });
 });
 

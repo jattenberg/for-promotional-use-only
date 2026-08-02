@@ -20,6 +20,24 @@ export const prepareSongForDisplay = (song) => {
   return titleCase(cleanSong(song));
 };
 
+/** Display title for a track file (basename only, for nested album rows). */
+export const prepareTrackTitle = (path) => {
+  const basename = path.split('/').pop() || path;
+  return titleCase(
+    basename
+      .replace(/_/g, ' ')
+      .replace(/\.mp4$/i, '')
+      .replace(/\.mp3$/i, '')
+      .replace(/\.m4a$/i, '')
+      .replace(/(\w)-(\w)/g, (x) => x[0] + ' ' + x[2])
+  );
+};
+
+export const findAlbumIdForTrack = (albums, trackPath) => {
+  const match = (albums || []).find((album) => album.tracks.indexOf(trackPath) !== -1);
+  return match ? match.id : null;
+};
+
 export const compareSongsForDisplay = (a, b) => {
   return prepareSongForDisplay(a).localeCompare(prepareSongForDisplay(b));
 };
@@ -30,7 +48,7 @@ export const compareSongsForDisplay = (a, b) => {
 /**
  * Build sorted playlist rows: album parents (by title) and orphan tracks (by display title).
  */
-export const buildDisplayRows = (songList, albums) => {
+export const buildDisplayRows = (songList, albums = []) => {
   const inAlbum = albums.reduce(
     (paths, album) =>
       album.tracks.reduce((acc, track) => ({ ...acc, [track]: true }), paths),

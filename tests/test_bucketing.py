@@ -54,6 +54,10 @@ def main():
         "mixtape/CoverCDs/Knowledge Magazine 33 Phuturistic Bluez/03 Final Track.mp3",
     ]
     assert should_collapse_parent(cover_album_id, cover_tracks)
+    assert should_collapse_parent(
+        "CoverCDs/Knowledge Magazine 11 Substance",
+        ["mixtape/CoverCDs/Knowledge Magazine 11 Substance/01 Substance Mix.mp3"],
+    )
 
     hysteria_tracks = [
         "mixtape/Hysteria 8/Andy C - Side B.mp3",
