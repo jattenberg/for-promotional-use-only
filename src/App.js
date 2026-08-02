@@ -3,7 +3,8 @@ import AlphabetMenu from './AlphabetMenu';
 import Songs from './Songs';
 import Drawer from './Drawer';
 import ScrollToTop from 'react-scroll-up';
-import { prepareSongForDisplay } from './songUtils';
+import NotFound from './NotFound';
+import { letterFromRoute, prepareSongForDisplay } from './songUtils';
 
 const STATE_KEY = 'state.v2';
 const RECENTS_CAP = 50;
@@ -27,7 +28,6 @@ const loadPersistedState = () => {
     return {
       favorites: parsed.favorites || {},
       recentlyPlayed: parsed.recentlyPlayed || {},
-      activeLetter: parsed.activeLetter || undefined,
     };
   } catch (e) {
     return {};
@@ -39,30 +39,59 @@ class App extends Component {
     super(props);
 
     const persisted = loadPersistedState();
+    const routeLetter = letterFromRoute(
+      props.match && props.match.params && props.match.params.letter
+    );
+
     this.state = {
       ...defaultState(),
       ...persisted,
-      songList: require('./static/json/Ksongs.json'),
+      activeLetter: routeLetter || 'K',
     };
+    this.fetchGeneration = 0;
+  }
+
+  componentDidMount() {
+    const letter = letterFromRoute(
+      this.props.match && this.props.match.params && this.props.match.params.letter
+    );
+    if (letter) {
+      this.loadLetter(letter);
+    }
   }
 
   componentDidUpdate(prevProps, prevState) {
-    const { favorites, recentlyPlayed, activeLetter } = this.state;
+    const prevParam =
+      prevProps.match && prevProps.match.params && prevProps.match.params.letter;
+    const nextParam =
+      this.props.match && this.props.match.params && this.props.match.params.letter;
+    if (prevParam !== nextParam) {
+      const letter = letterFromRoute(nextParam);
+      if (letter) {
+        this.loadLetter(letter);
+      }
+    }
+
+    const { favorites, recentlyPlayed } = this.state;
     if (
       favorites !== prevState.favorites ||
-      recentlyPlayed !== prevState.recentlyPlayed ||
-      activeLetter !== prevState.activeLetter
+      recentlyPlayed !== prevState.recentlyPlayed
     ) {
       localStorage.setItem(
         STATE_KEY,
-        JSON.stringify({ favorites, recentlyPlayed, activeLetter })
+        JSON.stringify({ favorites, recentlyPlayed })
       );
     }
   }
 
-  selectLetter = (letter) => {
-    const activeLetter = letter;
-    this.setState({ loading: true, error: null, activeLetter });
+  loadLetter = (letter) => {
+    const generation = this.fetchGeneration + 1;
+    this.fetchGeneration = generation;
+    this.setState({
+      loading: true,
+      error: null,
+      activeLetter: letter,
+    });
 
     fetch(`${process.env.PUBLIC_URL}/json/${letter}songs.json`)
       .then((response) => {
@@ -72,7 +101,7 @@ class App extends Component {
         return response.json();
       })
       .then((songListJson) => {
-        if (this.state.activeLetter !== activeLetter) {
+        if (this.fetchGeneration !== generation) {
           return;
         }
         this.setState({
@@ -82,7 +111,7 @@ class App extends Component {
         });
       })
       .catch((err) => {
-        if (this.state.activeLetter !== activeLetter) {
+        if (this.fetchGeneration !== generation) {
           return;
         }
         this.setState({
@@ -90,6 +119,10 @@ class App extends Component {
           error: err.message || 'Failed to load songs',
         });
       });
+  }
+
+  retryLoad = () => {
+    this.loadLetter(this.state.activeLetter);
   }
 
   toggleAddRemoveFavorites = (songPath) => {
@@ -164,7 +197,7 @@ class App extends Component {
   }
 
   renderSongsArea = () => {
-    const { loading, error, songList, activeLetter, favorites } = this.state;
+    const { loading, error, songList, favorites } = this.state;
     if (loading) {
       return <div className="body-content">Loading…</div>;
     }
@@ -172,7 +205,7 @@ class App extends Component {
       return (
         <div className="body-content">
           <p>{error}</p>
-          <button type="button" onClick={() => this.selectLetter(activeLetter)}>
+          <button type="button" onClick={this.retryLoad}>
             Retry
           </button>
         </div>
@@ -180,7 +213,7 @@ class App extends Component {
     }
     return (
       <Songs songList={songList}
-             key={activeLetter}
+             key={this.state.activeLetter}
              favorites={favorites}
              toggleAddRemoveFavorites={this.toggleAddRemoveFavorites}
              recordPlayed={this.recordPlayed}
@@ -189,11 +222,18 @@ class App extends Component {
   }
 
   render = () => {
+    const routeLetter = letterFromRoute(
+      this.props.match && this.props.match.params && this.props.match.params.letter
+    );
+    if (!routeLetter) {
+      return <NotFound />;
+    }
+
     return (
       <React.Fragment>
         <div className="container">
           <Header />
-          <AlphabetMenu selectLetter={this.selectLetter} activeLetter={this.state.activeLetter}/>
+          <AlphabetMenu activeLetter={this.state.activeLetter}/>
           { this.renderDrawer() }
           { this.renderSongsArea() }
         </div>
