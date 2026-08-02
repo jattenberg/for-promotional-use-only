@@ -2,9 +2,11 @@ import React, { Component } from 'react';
 import AlphabetMenu from './AlphabetMenu';
 import Songs from './Songs';
 import Drawer from './Drawer';
+import BottomPlaybackBar from './BottomPlaybackBar';
 import ScrollToTop from 'react-scroll-up';
 import NotFound from './NotFound';
 import {
+  compareSongsForDisplay,
   letterForSongKey,
   letterFromRoute,
   letterToRoute,
@@ -21,6 +23,8 @@ const defaultState = () => ({
   favorites: {},
   recentlyPlayed: {},
   pendingPlay: null,
+  currentlyPlayingPath: null,
+  seekToSeconds: 0,
   loading: false,
   error: null,
   searchQuery: '',
@@ -28,7 +32,6 @@ const defaultState = () => ({
   searchIndexError: null,
   searchIndexLoading: false,
 });
-
 const loadPersistedState = () => {
   const saved = localStorage.getItem(STATE_KEY);
   if (!saved) {
@@ -122,11 +125,25 @@ class App extends Component {
           pendingPlay &&
           pendingPlay.path &&
           songListJson.indexOf(pendingPlay.path) === -1;
+        const applyPending =
+          pendingPlay &&
+          pendingPlay.path &&
+          songListJson.indexOf(pendingPlay.path) !== -1;
         this.setState({
           songList: songListJson,
           loading: false,
           error: null,
           ...(orphanPending ? { pendingPlay: null } : {}),
+          ...(applyPending
+            ? {
+                currentlyPlayingPath: pendingPlay.path,
+                seekToSeconds:
+                  typeof pendingPlay.seekTo === 'number' && pendingPlay.seekTo > 0
+                    ? pendingPlay.seekTo
+                    : 0,
+                pendingPlay: null,
+              }
+            : {}),
         });
       })
       .catch((err) => {
@@ -277,13 +294,77 @@ class App extends Component {
       return;
     }
 
-    this.setState({ pendingPlay });
+    if (this.state.songList.indexOf(songPath) === -1) {
+      this.setState({ pendingPlay });
+      return;
+    }
+
+    this.setState({
+      currentlyPlayingPath: songPath,
+      seekToSeconds: seekTo,
+      pendingPlay: null,
+    });
   }
 
-  clearPendingPlay = () => {
-    if (this.state.pendingPlay) {
-      this.setState({ pendingPlay: null });
+  selectTrack = (songPath) => {
+    if (!songPath) {
+      return;
     }
+    // Selecting the active row keeps that track loaded (does not clear).
+    if (this.state.currentlyPlayingPath === songPath) {
+      return;
+    }
+    this.setState({
+      currentlyPlayingPath: songPath,
+      seekToSeconds: 0,
+    });
+  }
+
+  clearPlayback = () => {
+    this.setState({
+      currentlyPlayingPath: null,
+      seekToSeconds: 0,
+    });
+  }
+
+  clearSeek = () => {
+    if (this.state.seekToSeconds) {
+      this.setState({ seekToSeconds: 0 });
+    }
+  }
+
+  sortedSongList = () => {
+    return [...this.state.songList].sort(compareSongsForDisplay);
+  }
+
+  playAdjacentTrack = (offset) => {
+    const { currentlyPlayingPath } = this.state;
+    const sorted = this.sortedSongList();
+    if (!sorted.length) {
+      this.clearPlayback();
+      return;
+    }
+    const index = currentlyPlayingPath
+      ? sorted.indexOf(currentlyPlayingPath)
+      : -1;
+    const nextIndex = index === -1 && offset > 0 ? 0 : index + offset;
+    const nextPath = sorted[nextIndex];
+    if (nextPath) {
+      this.setState({
+        currentlyPlayingPath: nextPath,
+        seekToSeconds: 0,
+      });
+      return;
+    }
+    this.clearPlayback();
+  }
+
+  playNextTrack = () => {
+    this.playAdjacentTrack(1);
+  }
+
+  playPreviousTrack = () => {
+    this.playAdjacentTrack(-1);
   }
 
   ensureSearchIndex = () => {
@@ -413,7 +494,7 @@ class App extends Component {
       songList,
       favorites,
       searchQuery,
-      pendingPlay,
+      currentlyPlayingPath,
     } = this.state;
     if (searchQuery.trim()) {
       return null;
@@ -432,14 +513,34 @@ class App extends Component {
       );
     }
     return (
-      <Songs songList={songList}
-             key={this.state.activeLetter}
-             favorites={favorites}
-             pendingPlay={pendingPlay}
-             toggleAddRemoveFavorites={this.toggleAddRemoveFavorites}
-             recordPlayed={this.recordPlayed}
-             updatePlaybackPosition={this.updatePlaybackPosition}
-             onPendingPlayConsumed={this.clearPendingPlay}
+      <Songs
+        songList={songList}
+        key={this.state.activeLetter}
+        favorites={favorites}
+        currentlyPlayingPath={currentlyPlayingPath}
+        onSelectTrack={this.selectTrack}
+        toggleAddRemoveFavorites={this.toggleAddRemoveFavorites}
+      />
+    );
+  }
+
+  renderPlaybackBar = () => {
+    const {
+      currentlyPlayingPath,
+      seekToSeconds,
+      favorites,
+    } = this.state;
+    return (
+      <BottomPlaybackBar
+        currentPath={currentlyPlayingPath}
+        seekToSeconds={seekToSeconds}
+        favorites={favorites}
+        toggleAddRemoveFavorites={this.toggleAddRemoveFavorites}
+        recordPlayed={this.recordPlayed}
+        updatePlaybackPosition={this.updatePlaybackPosition}
+        onSeekApplied={this.clearSeek}
+        onNext={this.playNextTrack}
+        onPrevious={this.playPreviousTrack}
       />
     );
   }
@@ -454,13 +555,14 @@ class App extends Component {
 
     return (
       <React.Fragment>
-        <div className="container">
+        <div className="container has-bottom-playback">
           <Header />
           <AlphabetMenu activeLetter={this.state.activeLetter}/>
           { this.renderDrawer() }
           { this.renderSearch() }
           { this.renderSongsArea() }
         </div>
+        { this.renderPlaybackBar() }
         <ScrollToTop showUnder={160}>
             <span><i className="scroll-up fa fa-angle-double-up "></i></span>
         </ScrollToTop>
