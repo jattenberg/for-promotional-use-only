@@ -123,6 +123,7 @@ class PlaybackHarness extends Component {
       <div>
         <Songs
           songList={songList}
+          albums={[]}
           favorites={favorites}
           currentlyPlayingPath={currentlyPlayingPath}
           onSelectTrack={this.selectTrack}

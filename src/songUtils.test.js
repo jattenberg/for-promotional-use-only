@@ -1,4 +1,5 @@
 import {
+  buildNavigationOrder,
   cleanSong,
   compareSongsForDisplay,
   letterForSongKey,
@@ -73,6 +74,59 @@ describe('letterFromRoute', () => {
 describe('cleanSong', () => {
   it('strips mixtape prefix and extension', () => {
     expect(cleanSong('mixtape/foo_bar.mp3')).toBe('foo bar');
+  });
+});
+
+describe('buildNavigationOrder', () => {
+  const albumZulu = {
+    id: 'CoverCDs/Album Zulu',
+    title: 'Album Zulu',
+    tracks: ['mixtape/CoverCDs/Album Zulu/01 Track.mp3'],
+  };
+  const albumAlpha = {
+    id: 'CoverCDs/Album Alpha',
+    title: 'Album Alpha',
+    tracks: ['mixtape/CoverCDs/Album Alpha/01 Track.mp3'],
+  };
+  const orphan = 'mixtape/album_yankee.mp3';
+
+  it('orders orphans among album groups by row title, not path-only sort', () => {
+    const songList = [...albumZulu.tracks, ...albumAlpha.tracks, orphan];
+    const flatTitleSort = [...songList].sort(compareSongsForDisplay);
+    const navigation = buildNavigationOrder(songList, [albumAlpha, albumZulu]);
+
+    expect(flatTitleSort).toEqual([
+      orphan,
+      albumAlpha.tracks[0],
+      albumZulu.tracks[0],
+    ]);
+    expect(navigation).toEqual([
+      albumAlpha.tracks[0],
+      orphan,
+      albumZulu.tracks[0],
+    ]);
+  });
+
+  it('interleaves orphan rows among album parents by display title', () => {
+    const earlyOrphan = 'mixtape/aaa_early.mp3';
+    const albumA = {
+      id: 'CoverCDs/Album Mmm',
+      title: 'Album Mmm',
+      tracks: ['mixtape/CoverCDs/Album Mmm/01 Track.mp3'],
+    };
+    const albumB = {
+      id: 'CoverCDs/Album Zzz',
+      title: 'Album Zzz',
+      tracks: ['mixtape/CoverCDs/Album Zzz/01 Track.mp3'],
+    };
+    const lateOrphan = 'mixtape/zzz_orphan.mp3';
+    const songList = [...albumA.tracks, earlyOrphan, ...albumB.tracks, lateOrphan];
+    expect(buildNavigationOrder(songList, [albumA, albumB])).toEqual([
+      earlyOrphan,
+      ...albumA.tracks,
+      ...albumB.tracks,
+      lateOrphan,
+    ]);
   });
 });
 

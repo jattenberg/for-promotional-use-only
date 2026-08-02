@@ -53,3 +53,24 @@ ul.songlist
       background-color: rgba(255,255,255,0.18)
     &.active
       background-color: rgba(255,255,255,0.3)
+  li.album-group
+    list-style-type none
+    margin 0
+    padding 0
+  li.single-song-wrapper--album
+    .album-track-count
+      display block
+      font-size 0.75em
+      color lighten(black, 35)
+      margin-top 0.15em
+    .album-expand-indicator
+      font-size 0.65em
+      color primaryAccentBlue
+  ul.songlist--album-tracks
+    list-style-type none
+    margin 0
+    padding 0
+    li.single-song-wrapper--nested
+      padding-left 1.4em
+      font-size 0.95em
+      text-align left

@@ -5,3 +5,13 @@ mixtape/not-audio.jpg
 mixtape/a track with spaces.mp3
 mixtape/AWOL '93/
 mixtape/http:/
+mixtape/CoverCDs/Knowledge Magazine 33 Phuturistic Bluez/01 Regret.mp3
+mixtape/CoverCDs/Knowledge Magazine 33 Phuturistic Bluez/02 Next Track.mp3
+mixtape/CoverCDs/Knowledge Magazine 33 Phuturistic Bluez/03 Final Track.mp3
+mixtape/Hysteria 8/Andy C - Side B.mp3
+mixtape/Hysteria 8/Brockie - Side A.mp3
+mixtape/Hysteria 8/Ellis Dee - Side A.mp3
+mixtape/Amazon - Urban Jungle 95/brockie/Track01.mp3
+mixtape/Amazon - Urban Jungle 95/brockie/Track02.mp3
+mixtape/Amazon - Urban Jungle 95/brockie/Track03.mp3
+mixtape/Darren Jay - Live at AWOL Canada - Feb 22 2013.mp3

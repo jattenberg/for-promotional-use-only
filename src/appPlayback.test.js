@@ -163,4 +163,41 @@ describe('App deferred playback requests', () => {
     expect(app.state.currentlyPlayingPath).toBe('mixtape/kaleidoscope_live.mp3');
     expect(app.state.pendingPlay).toBeNull();
   });
+
+  it('advances through album tracks in catalog order, not global title sort', async () => {
+    const albumPayload = {
+      tracks: [
+        'mixtape/CoverCDs/Album Alpha/01 Zebra.mp3',
+        'mixtape/CoverCDs/Album Alpha/02 Alpha.mp3',
+        'mixtape/CoverCDs/Album Beta/01 Beta.mp3',
+      ],
+      albums: [
+        {
+          id: 'CoverCDs/Album Alpha',
+          title: 'Album Alpha',
+          tracks: [
+            'mixtape/CoverCDs/Album Alpha/01 Zebra.mp3',
+            'mixtape/CoverCDs/Album Alpha/02 Alpha.mp3',
+          ],
+        },
+        {
+          id: 'CoverCDs/Album Beta',
+          title: 'Album Beta',
+          tracks: ['mixtape/CoverCDs/Album Beta/01 Beta.mp3'],
+        },
+      ],
+    };
+
+    const { app, settleFetch } = renderApp('c', albumPayload);
+    await settleFetch();
+
+    act(() => {
+      app.selectTrack(albumPayload.albums[0].tracks[0]);
+    });
+    act(() => {
+      app.playNextTrack();
+    });
+
+    expect(app.state.currentlyPlayingPath).toBe(albumPayload.albums[0].tracks[1]);
+  });
 });

@@ -1,6 +1,9 @@
-[
-  "mixtape/101-andy_c_and_phantasy-live_at_desire_3rd_february_1996.mp3",
-  "mixtape/102-andy_c_and_phantasy-live_at_desire_3rd_february_1996.mp3",
-  "mixtape/187- Live at Syrous The Next Level Sept 4 1993.mp3",
-  "mixtape/4-turntable-madness-101-dj-trance-raw-insomniac-1-year.mp3"
-]
+{
+  "tracks": [
+    "mixtape/101-andy_c_and_phantasy-live_at_desire_3rd_february_1996.mp3",
+    "mixtape/102-andy_c_and_phantasy-live_at_desire_3rd_february_1996.mp3",
+    "mixtape/187- Live at Syrous The Next Level Sept 4 1993.mp3",
+    "mixtape/4-turntable-madness-101-dj-trance-raw-insomniac-1-year.mp3"
+  ],
+  "albums": []
+}
