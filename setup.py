@@ -1,15 +1,9 @@
 from setuptools import setup
 
 required_libraries = [
-    "jupyter",
-    "matplotlib",
-    "pandas",
-    "requests",
-    "seaborn",
-    "orjson==3.3.1",
-    "boto3==1.14.44",
-    "botocore==1.17.44",
-    "s3fs",
+    "orjson>=3.9",
+    "boto3>=1.34",
+    "botocore>=1.34",
 ]
 
 setup(
