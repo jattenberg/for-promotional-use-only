@@ -75,17 +75,30 @@ describe('Songs album collapse', () => {
         .dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
 
-    const childRow = container.querySelector('.single-song-wrapper--nested');
-    act(() => {
-      childRow.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    });
+    const playButtons = container.querySelectorAll(
+      '.songlist--album-tracks .song-play-control'
+    );
+    expect(playButtons.length).toBe(album.tracks.length);
 
-    const playButton = container.querySelector('.songlist--album-tracks .song-play-control');
     act(() => {
-      playButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      playButtons[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
 
     expect(onSelectTrack).toHaveBeenCalledWith(album.tracks[0]);
+  });
+
+  it('shows nested track titles as basenames under the album', () => {
+    renderSongs();
+
+    act(() => {
+      container
+        .querySelector('.single-song-wrapper--album')
+        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+
+    expect(container.textContent).toMatch(/01 Regret/);
+    expect(container.textContent).toMatch(/02 Next Track/);
+    expect(container.textContent).not.toMatch(/Knowledge Magazine 33 Phuturistic Bluez\/01/);
   });
 
   it('still renders orphan tracks outside albums', () => {

@@ -20,6 +20,12 @@ export const prepareSongForDisplay = (song) => {
   return titleCase(cleanSong(song));
 };
 
+/** Album child rows: basename only so tracks are readable under the parent. */
+export const prepareNestedTrackForDisplay = (song) => {
+  const basename = song.split('/').pop() || song;
+  return titleCase(cleanSong(`mixtape/${basename}`));
+};
+
 export const compareSongsForDisplay = (a, b) => {
   return prepareSongForDisplay(a).localeCompare(prepareSongForDisplay(b));
 };

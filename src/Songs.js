@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import {
   buildDisplayRows,
   mediaUrl,
+  prepareNestedTrackForDisplay,
   prepareSongForDisplay,
 } from './songUtils';
 
@@ -18,12 +19,14 @@ class Songs extends Component {
   toggleAlbum = (albumId) => {
     this.setState((state) => ({
       expandedAlbumId: state.expandedAlbumId === albumId ? null : albumId,
+      expandedPath: null,
     }));
   }
 
   expandSong = (songPath) => {
     this.setState((state) => ({
       expandedPath: state.expandedPath === songPath ? null : songPath,
+      expandedAlbumId: null,
     }));
   }
 
@@ -68,9 +71,12 @@ class Songs extends Component {
       currentlyPlayingPath,
     } = this.props;
     const { expandedPath } = this.state;
-    const isExpanded = expandedPath === song;
+    const isExpanded = !nested && expandedPath === song;
+    const showControls = nested || isExpanded;
     const isPlaying = currentlyPlayingPath === song;
-    const songTitle = prepareSongForDisplay(song);
+    const songTitle = nested
+      ? prepareNestedTrackForDisplay(song)
+      : prepareSongForDisplay(song);
     const songSrc = mediaUrl(song);
     const favoriteClass =
       favorites && favorites.hasOwnProperty(song)
@@ -89,10 +95,14 @@ class Songs extends Component {
       <li
         className={rowClass}
         key={song}
-        onClick={() => this.expandSong(song)}
+        onClick={() => {
+          if (!nested) {
+            this.expandSong(song);
+          }
+        }}
       >
         <span className="title">
-          {isExpanded ? (
+          {showControls ? (
             <button
               type="button"
               className="song-play-control"
@@ -106,7 +116,7 @@ class Songs extends Component {
           ) : null}
           {songTitle}
         </span>
-        {isExpanded
+        {showControls
           ? this.renderTrackActions(song, songTitle, songSrc, favoriteClass)
           : null}
       </li>
