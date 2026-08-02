@@ -137,3 +137,5 @@ ENV/
 
 # emacs stuff
 *~
+# A9 pre-deploy site backups (exclude mixtape)
+backup-*/
