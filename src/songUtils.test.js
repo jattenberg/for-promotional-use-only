@@ -77,17 +77,6 @@ describe('cleanSong', () => {
   });
 });
 
-describe('prepareNestedTrackForDisplay', () => {
-  it('uses the filename only for album child rows', () => {
-    const { prepareNestedTrackForDisplay } = require('./songUtils');
-    expect(
-      prepareNestedTrackForDisplay(
-        'mixtape/CoverCDs/Knowledge Magazine 33 Phuturistic Bluez/01 Regret.mp3'
-      )
-    ).toBe('01 Regret');
-  });
-});
-
 describe('buildNavigationOrder', () => {
   const albumZulu = {
     id: 'CoverCDs/Album Zulu',
