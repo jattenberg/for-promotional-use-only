@@ -1,39 +1,14 @@
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 import AudioPlayer from 'react-responsive-audio-player';
-// for animations
 import Collapse from '@material-ui/core/Collapse';
-
-const titleCase = (input) => {
-  return input.trim()
-    .split(/\s+/)
-    .map((x) => x.substring(0, 1).toUpperCase() + x.slice(1))
-    .join(" ");
-}
-
-const cleanSong = (song) => {
-  return song.replace(/_/g, " ")
-    .replace("mixtape/", "")
-    .replace(".mp4", "")
-    .replace(".mp3", "")
-    .replace(".m4a", "")
-    .replace(/(\w)-(\w)/g, (x) => x[0] + " " + x[2]);
-}
-
-const prepareSongForDisplay = (song) => {
-  return titleCase(
-    cleanSong(song)
-  );
-}
+import {
+  compareSongsForDisplay,
+  mediaUrl,
+  prepareSongForDisplay,
+} from './songUtils';
 
 class Songs extends Component {
-  /*  javascript `this` scoping is a f*ing shitshow
-  constructor(props) {
-    super(props);
-    this.formatSongTitle = this.formatSongTitle.bind(this);
-    this.renderSong = this.renderSong.bind(this);
-  }
-  */
   state = {
     currentlyPlayingSong: null
   }
@@ -47,27 +22,24 @@ class Songs extends Component {
   }
 
   setNextSong = (index) =>  {
-    console.log('next called with', index);
     this.setCurrentlyPlayingSong(index + 1);
   }
 
   setPreviousSong = (index) =>  {
-    console.log('previous called with', index);
     this.setCurrentlyPlayingSong(index - 1);
   }
 
   renderSong = (song, index) => {
-    const { songList, toggleAddRemoveFavorites, favorites, addToRecentlyPlayed, toggleAddRemoveRecentlyPlayed } = this.props;
+    const { songList, toggleAddRemoveFavorites, favorites, recordPlayed } = this.props;
 
     return (
       <SingleSong
         songList={songList}
         favorites={favorites}
         toggleAddRemoveFavorites={toggleAddRemoveFavorites}
-        toggleAddRemoveRecentlyPlayed={toggleAddRemoveRecentlyPlayed}
+        recordPlayed={recordPlayed}
         onNext={() => this.setNextSong(index)}
         onPrevious={() => this.setPreviousSong(index)}
-        addToRecentlyPlayed={addToRecentlyPlayed}
         currentlyPlayingSong={this.state.currentlyPlayingSong}
         setNothingPlaying={this.setNothingPlaying}
         setCurrentlyPlayingSong={this.setCurrentlyPlayingSong}
@@ -76,25 +48,18 @@ class Songs extends Component {
         index={index} />
     );
   }
-  /* React Documentation:
-  If you want to “reset” some state when a prop changes, consider either
-  making a component fully controlled or fully uncontrolled with a key instead.
-  Hence, I added a key to <Songs key={this.state.activeLetter}  /> in the
-  parent level App component.
-  */
 
   render = () => {
     const { songList } = this.props;
+    const sortedSongList = [...songList].sort(compareSongsForDisplay);
     return (
       <React.Fragment>
         <div className="body-content">
           <div className="total-songs">
-            {songList.length > 0 ? songList.length + " songs" : null}
+            {sortedSongList.length > 0 ? sortedSongList.length + " songs" : null}
           </div>
           <ul className="songlist">
-            {songList
-               .sort((a, b) => prepareSongForDisplay(a) > prepareSongForDisplay(b))
-               .map(this.renderSong)}
+            {sortedSongList.map(this.renderSong)}
           </ul>
         </div>
       </React.Fragment>
@@ -105,8 +70,6 @@ class Songs extends Component {
 
 class SingleSong extends Component {
   state = {
-    //displaySong : false,
-    //playingNow: false
     unfurled: false
   }
 
@@ -120,26 +83,11 @@ class SingleSong extends Component {
 
   toggleDisplaySong = (currentlyPlayingSong) => {
     const { setNothingPlaying, setCurrentlyPlayingSong, index } = this.props;
-    // there's already a song playing
     if (currentlyPlayingSong === index) {
-      //this.setState({displaySong: false });
       setNothingPlaying() ;
-
-    } else { // else, nothing is playing, so show THIS song
-      //this.setState({displaySong: true });
+    } else {
       setCurrentlyPlayingSong(index);
     }
-  }
-
-  /*
-  showOrHide = () => {
-    const {  index, currentlyPlayingSong } = this.props; // `key` is not a prop
-    return currentlyPlayingSong === index ? "" : "hideme";
-  }
-  */
-
-  handleParentClick = () => {
-    console.log('handleParentClick');
   }
 
   stopChildClickPropagation = (e) => {
@@ -151,26 +99,20 @@ class SingleSong extends Component {
     return currentlyPlayingSong === index;
   }
 
-  renderFavoritesCSS = (song) => {
+  renderFavoritesCSS = (songPath) => {
     const { favorites } = this.props;
     let favoriteClass;
-    // if song is in favorites already
-    if (favorites.hasOwnProperty(song)) {
+    if (favorites.hasOwnProperty(songPath)) {
         favoriteClass = "favorite fas fa-star already-favorited";
     } else {
-    // if song NOT currently in favorites
         favoriteClass = "favorite far fa-star";
     }
     return ( favoriteClass )
   }
 
-  handlePlay = (song) => {
-    const { toggleAddRemoveRecentlyPlayed } = this.props;
-    toggleAddRemoveRecentlyPlayed(song);
-  }
-
-  handleNextOrPrevious = (direction) => {
-    console.log(direction);
+  handlePlay = (songPath) => {
+    const { recordPlayed } = this.props;
+    recordPlayed(songPath);
   }
 
   playPreviousTrack = () =>  {
@@ -183,6 +125,7 @@ class SingleSong extends Component {
     onNext();
   }
 
+  // B3 will replace this player; v1.3.1 exposes no onNext/onPrevious props.
   getAudioPlayerRef = (ref) =>  {
     if (this.audioPlayerRef) {
       const audioPlayerDOM = ReactDOM.findDOMNode(this.audioPlayerRef);
@@ -201,62 +144,46 @@ class SingleSong extends Component {
     }
   }
 
-  renderAudioPlayer = (playlist,song) =>  {
-
+  renderAudioPlayer = (playlist, song) =>  {
     const stopChildClickPropagation = this.stopChildClickPropagation;
-    const formatSongTitle = this.formatSongTitle;
-    const { toggleAddRemoveFavorites, toggleAddRemoveRecentlyPlayed } = this.props;
-    const formattedSongTitle = formatSongTitle(song);
+    const { toggleAddRemoveFavorites } = this.props;
     const songSrc = playlist[0].url;
-    // if (this.shouldRenderAudioPlayer()) {
-      return (
-        <div className="relative">
-          <div className="" onClick={ stopChildClickPropagation }>
-            <AudioPlayer autoplay autoplayDelayInSeconds={0.5} ref={this.getAudioPlayerRef} cycle={false} playlist={playlist}
-                         onMediaEvent={{"play": () => this.handlePlay(formattedSongTitle)}}
-            />
-          </div>
-          <div className="clearfix favorite-download" onClick={ stopChildClickPropagation }>
-            <i className={ this.renderFavoritesCSS(formattedSongTitle) }
-               onClick={ () => toggleAddRemoveFavorites(formattedSongTitle)}></i>
-            <a href={songSrc}> 
-              <i className="download fas fa-download"></i>
-            </a>
-          </div>
+    return (
+      <div className="relative">
+        <div className="" onClick={ stopChildClickPropagation }>
+          <AudioPlayer autoplay autoplayDelayInSeconds={0.5} ref={this.getAudioPlayerRef} cycle={false} playlist={playlist}
+                       onMediaEvent={{"play": () => this.handlePlay(song)}}
+          />
         </div>
-      )
-    // }
+        <div className="clearfix favorite-download" onClick={ stopChildClickPropagation }>
+          <i className={ this.renderFavoritesCSS(song) }
+             onClick={ () => toggleAddRemoveFavorites(song)}></i>
+          <a href={songSrc}>
+            <i className="download fas fa-download"></i>
+          </a>
+        </div>
+      </div>
+    )
   }
 
   render = () => {
-    const { song, index, currentlyPlayingSong } = this.props; // `key` is not a prop
-    const { unfurled } = this.state;
+    const { song, index, currentlyPlayingSong } = this.props;
     let songTitle = this.formatSongTitle(song);
 
-    //audio player
-    let url = "http://for-promotional-use-only.com/" + song;
+    let url = mediaUrl(song);
     let playlist = [{url: url, title: songTitle}];
 
     return (
       <li
         className={"single-song-wrapper " + (this.shouldRenderAudioPlayer() ? "active" : "")}
-        key={songTitle + "-" + index}
-        index={songTitle + "-" + index}
+        key={song + "-" + index}
+        index={song + "-" + index}
         onClick= { (e)=> this.toggleDisplaySong(currentlyPlayingSong) }
-        //onClick={this.handleParentClick}
         >
         <span className="title">{songTitle}</span>
           <Collapse in={this.shouldRenderAudioPlayer()} unmountOnExit timeout={{enter:300, exit:500}}>
             { this.renderAudioPlayer(playlist,song)}
           </Collapse>
-        {/*
-        <div
-          className={ this.showOrHide() }
-          //className=""
-          onClick={ this.handleChildClick }>
-          <AudioPlayer playlist={playlist} />
-        </div>
-        */}
       </li>
     )
   }
