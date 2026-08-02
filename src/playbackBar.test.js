@@ -186,17 +186,41 @@ describe('bottom playback bar integration', () => {
     expect(container.querySelector('[data-mock-player]')).toBeNull();
   });
 
-  it('loads a track from a playlist row selection', () => {
-    renderHarness();
+  const expandRow = (index) => {
     const rows = container.querySelectorAll('.single-song-wrapper');
     act(() => {
-      rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      rows[index].dispatchEvent(new MouseEvent('click', { bubbles: true }));
     });
+    return rows[index];
+  };
+
+  const playExpandedRow = (row) => {
+    const playButton = row.querySelector('.song-play-control');
+    act(() => {
+      playButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+  };
+
+  it('expands a playlist row without starting playback', () => {
+    renderHarness();
+    const row = expandRow(0);
+    expect(row.className).toMatch(/expanded/);
+    expect(row.querySelector('.song-play-control')).not.toBeNull();
+    expect(row.querySelector('.favorite-download--row')).not.toBeNull();
+    expect(container.querySelector('.bottom-playback-bar--idle')).not.toBeNull();
+    expect(container.querySelector('[data-mock-player]')).toBeNull();
+  });
+
+  it('loads a track only after the expanded play control is clicked', () => {
+    renderHarness();
+    const row = expandRow(0);
+    playExpandedRow(row);
     expect(container.querySelector('.bottom-playback-bar--idle')).toBeNull();
     expect(container.querySelector('[data-mock-player]')).not.toBeNull();
     expect(container.querySelector('.bottom-playback-bar__title').textContent).toBe(
       'Alpha Track'
     );
+    expect(row.className).toMatch(/active/);
   });
 
   it('highlights the active row with a play indicator and no inline transport', () => {
@@ -212,7 +236,7 @@ describe('bottom playback bar integration', () => {
     expect(active.querySelector('.skip_button')).toBeNull();
   });
 
-  it('keeps the active track loaded when the same row is selected again', () => {
+  it('keeps the active track loaded when the same play control is clicked again', () => {
     const harness = renderHarness();
     act(() => {
       harness.selectTrack(songA);
@@ -251,13 +275,12 @@ describe('bottom playback bar integration', () => {
     expect(harness.state.currentlyPlayingPath).toBeNull();
   });
 
-  it('exposes favorite and download actions on the active row and bottom bar', () => {
+  it('exposes favorite and download actions on the expanded row and bottom bar', () => {
     const harness = renderHarness();
-    act(() => {
-      harness.selectTrack(songA);
-    });
+    const row = expandRow(0);
+    playExpandedRow(row);
     const rowActions = container.querySelector(
-      '.single-song-wrapper.active .favorite-download--row'
+      '.single-song-wrapper.expanded .favorite-download--row'
     );
     const barActions = container.querySelector('.bottom-playback-bar__actions');
     expect(rowActions).not.toBeNull();
@@ -275,6 +298,18 @@ describe('bottom playback bar integration', () => {
     expect(harness.state.favorites[songA]).toBeTruthy();
     expect(barActions.querySelector('.already-favorited')).not.toBeNull();
     expect(rowActions.querySelector('.already-favorited')).not.toBeNull();
+  });
+
+  it('favorites from an expanded row without starting playback', () => {
+    const harness = renderHarness();
+    const row = expandRow(0);
+    const favorite = row.querySelector('.favorite-download--row .favorite');
+    act(() => {
+      favorite.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    });
+    expect(harness.state.favorites[songA]).toBeTruthy();
+    expect(harness.state.currentlyPlayingPath).toBeNull();
+    expect(container.querySelector('[data-mock-player]')).toBeNull();
   });
 
   it('applies resume seek and notifies onSeekApplied', () => {

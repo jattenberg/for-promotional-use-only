@@ -6,39 +6,72 @@ import {
 } from './songUtils';
 
 /**
- * Declarative playlist view. Reports track selections; does not own playback.
+ * Declarative playlist view. Row click expands actions; play starts playback.
  */
 class Songs extends Component {
+  state = {
+    expandedPath: null,
+  }
+
+  expandSong = (songPath) => {
+    this.setState((state) => ({
+      expandedPath: state.expandedPath === songPath ? null : songPath,
+    }));
+  }
+
+  playSong = (event, songPath) => {
+    event.stopPropagation();
+    const { onSelectTrack } = this.props;
+    if (onSelectTrack) {
+      onSelectTrack(songPath);
+    }
+  }
+
   renderSong = (song) => {
     const {
       toggleAddRemoveFavorites,
       favorites,
       currentlyPlayingPath,
-      onSelectTrack,
     } = this.props;
-    const isActive = currentlyPlayingPath === song;
+    const { expandedPath } = this.state;
+    const isExpanded = expandedPath === song;
+    const isPlaying = currentlyPlayingPath === song;
     const songTitle = prepareSongForDisplay(song);
     const songSrc = mediaUrl(song);
     const favoriteClass =
       favorites && favorites.hasOwnProperty(song)
         ? 'favorite fas fa-star already-favorited'
         : 'favorite far fa-star';
+    const rowClass = [
+      'single-song-wrapper',
+      isExpanded ? 'expanded' : null,
+      isPlaying ? 'active' : null,
+    ]
+      .filter(Boolean)
+      .join(' ');
 
     return (
       <li
-        className={
-          'single-song-wrapper' + (isActive ? ' active' : '')
-        }
+        className={rowClass}
         key={song}
-        onClick={() => onSelectTrack(song)}
+        onClick={() => this.expandSong(song)}
       >
         <span className="title">
-          {isActive ? (
+          {isExpanded ? (
+            <button
+              type="button"
+              className="song-play-control"
+              aria-label={`Play ${songTitle}`}
+              onClick={(event) => this.playSong(event, song)}
+            >
+              <i className="song-play-indicator fa fa-play" aria-hidden="true" />
+            </button>
+          ) : isPlaying ? (
             <i className="song-play-indicator fa fa-play" aria-hidden="true" />
           ) : null}
           {songTitle}
         </span>
-        {isActive ? (
+        {isExpanded ? (
           <div
             className="clearfix favorite-download favorite-download--row"
             onClick={(e) => e.stopPropagation()}
@@ -48,6 +81,13 @@ class Songs extends Component {
               onClick={() => toggleAddRemoveFavorites(song)}
               role="button"
               aria-label="Toggle favorite"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  toggleAddRemoveFavorites(song);
+                }
+              }}
             />
             <a href={songSrc} aria-label="Download track">
               <i className="download fas fa-download" />

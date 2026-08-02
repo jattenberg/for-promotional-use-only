@@ -310,7 +310,7 @@ class App extends Component {
     if (!songPath) {
       return;
     }
-    // Selecting the active row keeps that track loaded (does not clear).
+    // Play requests from an expanded row; re-play of the current track is a no-op.
     if (this.state.currentlyPlayingPath === songPath) {
       return;
     }
