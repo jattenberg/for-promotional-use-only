@@ -1,15 +1,14 @@
-import boto3
 import os
 import sys
 import logging
-import string
+import boto3
 import orjson
+
+from .catalog import LETTERS, build_lists, is_audio_key, letter_for_key
 
 BUCKET = "for-promotional-use-only.com"
 FOLDER = "mixtape/"
-s3_client = boto3.client("s3")
-OUT_DIR = "build/json/"
-LETTERS = string.ascii_uppercase
+OUT_DIR = "public/json/"
 
 
 def get_all_s3_objects(s3, **base_kwargs):
@@ -30,7 +29,7 @@ def get_all_s3_objects(s3, **base_kwargs):
 
 
 def song_iterator(bucket=BUCKET, folder=FOLDER):
-
+    s3_client = boto3.client("s3")
     for file in get_all_s3_objects(s3_client, Bucket=bucket, Prefix=folder):
         if file["Key"] != folder:
             yield file
@@ -48,22 +47,37 @@ def main():
         format="%(asctime)s %(message)s", stream=sys.stdout, level="INFO"
     )
 
-    lists = {"NUM": []}
-    for letter in LETTERS:
-        lists[letter] = []
+    os.makedirs(OUT_DIR, exist_ok=True)
 
-    for song in song_iterator():
-        name = song["Key"]
-        if not (name.endswith("mp4") or name.endswith("m4a")):
-            pass
+    keys = [song["Key"] for song in song_iterator()]
+    lists = build_lists(keys)
 
-        first = name.replace("mixtape/", "")[0].upper()
-        letter = first if first in LETTERS else "NUM"
-
-        lists[letter] = lists[letter] + [name]
+    index = [
+        {"path": path, "letter": letter}
+        for letter, paths in lists.items()
+        for path in paths
+    ]
 
     for key, value in lists.items():
         pretty_print_json(OUT_DIR, "%ssongs.json" % key, value)
+
+    pretty_print_json(OUT_DIR, "index.json", index)
+    logging.info(
+        "wrote %d letter files and index.json (%d entries)",
+        len(lists),
+        len(index),
+    )
+
+
+# Re-export pure helpers for callers that imported them from this module.
+__all__ = [
+    "LETTERS",
+    "build_lists",
+    "is_audio_key",
+    "letter_for_key",
+    "main",
+    "song_iterator",
+]
 
 
 if __name__ == "__main__":

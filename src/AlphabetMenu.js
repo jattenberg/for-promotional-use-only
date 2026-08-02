@@ -1,4 +1,6 @@
 import React, { Component } from 'react';
+import { withRouter } from 'react-router-dom';
+import { letterToRoute } from './songUtils';
 
 const alphabetConst = "abcdefghijklmnopqrstuvwxyz".toUpperCase().split("");
 
@@ -6,24 +8,28 @@ class AlphabetMenu extends Component {
   activeLetterClass = letter => {
     const activeLetter = this.props.activeLetter;
     let activeLetterClass = "";
-    if (activeLetter === letter) { // activeLetter matches letter
+    if (activeLetter === letter) {
         activeLetterClass="active-letter";
     }
     return activeLetterClass;
   }
+
+  navigateToLetter = (letter) => {
+    const { history } = this.props;
+    history.push('/' + letterToRoute(letter));
+  }
+
   createLetter = (letter) => {
-    //console.log(`trying to create letter "${letter}"`);
-    const selectLetter = this.props.selectLetter;
     return (
       <li
         key={letter}
-        onClick={ ()=>selectLetter(letter)}
+        onClick={ ()=>this.navigateToLetter(letter)}
         className={this.activeLetterClass(letter)}
         >{letter}</li>
     )
   }
+
   render = () => {
-    const {activeLetter, selectLetter} = this.props
     return (
       <React.Fragment>
         <div className="header-wrapper">
@@ -36,7 +42,7 @@ class AlphabetMenu extends Component {
                 <ul>
                   <li
                     key={"NUM"}
-                    onClick={ ()=>selectLetter("NUM")}
+                    onClick={ ()=>this.navigateToLetter("NUM")}
                     className={this.activeLetterClass("NUM")}
                     >#</li>
 
@@ -53,4 +59,4 @@ class AlphabetMenu extends Component {
   }
 }
 
-export default AlphabetMenu;
+export default withRouter(AlphabetMenu);

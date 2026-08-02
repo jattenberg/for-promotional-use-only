@@ -3,117 +3,247 @@ import AlphabetMenu from './AlphabetMenu';
 import Songs from './Songs';
 import Drawer from './Drawer';
 import ScrollToTop from 'react-scroll-up';
+import NotFound from './NotFound';
+import {
+  letterFromRoute,
+  letterToRoute,
+  prepareSongForDisplay,
+} from './songUtils';
 
+const STATE_KEY = 'state.v2';
+const RECENTS_CAP = 50;
+
+const defaultState = () => ({
+  activeLetter: 'K',
+  songList: [],
+  favorites: {},
+  recentlyPlayed: {},
+  loading: false,
+  error: null,
+  searchQuery: '',
+  searchIndex: null,
+  searchIndexError: null,
+  searchIndexLoading: false,
+});
+
+const loadPersistedState = () => {
+  const saved = localStorage.getItem(STATE_KEY);
+  if (!saved) {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(saved);
+    return {
+      favorites: parsed.favorites || {},
+      recentlyPlayed: parsed.recentlyPlayed || {},
+    };
+  } catch (e) {
+    return {};
+  }
+};
 
 class App extends Component {
   constructor(props) {
     super(props);
 
-    const defaultLetter = "K";
+    const persisted = loadPersistedState();
+    const routeLetter = letterFromRoute(
+      props.match && props.match.params && props.match.params.letter
+    );
 
-    const defaultState = {
-      activeLetter: defaultLetter,
-      songList: require("./static/json/" + defaultLetter + "songs.json"),
-      favorites: {},
-      recentlyPlayed: {}
+    this.state = {
+      ...defaultState(),
+      ...persisted,
+      activeLetter: routeLetter || 'K',
+    };
+    this.fetchGeneration = 0;
+    this.searchIndexPromise = null;
+  }
+
+  componentDidMount() {
+    const letter = letterFromRoute(
+      this.props.match && this.props.match.params && this.props.match.params.letter
+    );
+    if (letter) {
+      this.loadLetter(letter);
+    }
+  }
+
+  componentDidUpdate(prevProps, prevState) {
+    const prevParam =
+      prevProps.match && prevProps.match.params && prevProps.match.params.letter;
+    const nextParam =
+      this.props.match && this.props.match.params && this.props.match.params.letter;
+    if (prevParam !== nextParam) {
+      const letter = letterFromRoute(nextParam);
+      if (letter) {
+        this.loadLetter(letter);
+      }
     }
 
-    const savedState = localStorage.getItem('state');
-
-    this.state = savedState ? JSON.parse(savedState) : defaultState;
+    const { favorites, recentlyPlayed } = this.state;
+    if (
+      favorites !== prevState.favorites ||
+      recentlyPlayed !== prevState.recentlyPlayed
+    ) {
+      localStorage.setItem(
+        STATE_KEY,
+        JSON.stringify({ favorites, recentlyPlayed })
+      );
+    }
   }
 
-  componentDidUpdate() {
-    localStorage.setItem('state', JSON.stringify(this.state));
-  }
+  loadLetter = (letter) => {
+    const generation = this.fetchGeneration + 1;
+    this.fetchGeneration = generation;
+    this.setState({
+      loading: true,
+      error: null,
+      activeLetter: letter,
+      searchQuery: '',
+    });
 
-  /*
-  favoriteExample = {
-    song1 : {
-      dateFavorited: "",
-      title: "",
-    },
-    song2 : {
-      dateFavorited: "",
-      title: "",
-    },
-  }
-  recentlyPlayedExample = {
-    song1 : {
-      dateFavorited: "",
-      title: "",
-    },
-    song2 : {
-      dateFavorited: "",
-      title: "",
-    },
-  }
-  */
-  selectLetter = (letter) => {
-    const activeLetter = letter;
-
-    fetch(`./json/${letter}songs.json`)
+    fetch(`${process.env.PUBLIC_URL}/json/${letter}songs.json`)
       .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to load ${letter} songs (${response.status})`);
+        }
         return response.json();
       })
       .then((songListJson) => {
-        //console.log(songListJson);
+        if (this.fetchGeneration !== generation) {
+          return;
+        }
         this.setState({
-          activeLetter: activeLetter,
-          songList: songListJson
+          songList: songListJson,
+          loading: false,
+          error: null,
+        });
+      })
+      .catch((err) => {
+        if (this.fetchGeneration !== generation) {
+          return;
+        }
+        this.setState({
+          loading: false,
+          error: err.message || 'Failed to load songs',
         });
       });
-
   }
 
-  toggleAddRemoveFavorites = song => {
-    const dateFavorited = Date.now();
-    const favorites = {...this.state.favorites};
-    // if song already exists, remove it
-    if (song in favorites) {
-      delete favorites[song]; //google said to use `delete`
-    // otherwise, it doesn't exist, ADD it.
+  retryLoad = () => {
+    this.loadLetter(this.state.activeLetter);
+  }
+
+  toggleAddRemoveFavorites = (songPath) => {
+    if (songPath in this.state.favorites) {
+      const favorites = Object.keys(this.state.favorites)
+        .filter((path) => path !== songPath)
+        .reduce((acc, path) => ({ ...acc, [path]: this.state.favorites[path] }), {});
+      this.setState({ favorites });
     } else {
-      favorites[song] = dateFavorited;
+      this.setState({
+        favorites: {
+          ...this.state.favorites,
+          [songPath]: {
+            title: prepareSongForDisplay(songPath),
+            at: Date.now(),
+          },
+        },
+      });
     }
-    this.setState({ favorites });
   }
 
   deleteAllFaves = () => {
-    console.log("before deleting all faves");
-    this.setState( {favorites: {}} );
-    console.log("after deleting all faves");
+    this.setState({ favorites: {} });
   }
 
   deleteAllRecents = () => {
-    console.log("before deleting recents");
-    this.setState( {recentlyPlayed: {}} );
-    console.log("after deleting recents");
+    this.setState({ recentlyPlayed: {} });
   }
 
-  toggleAddRemoveRecentlyPlayed = song => {
-    const datePlayed = Date.now();
-    const recentlyPlayed = {...this.state.recentlyPlayed};
-    // if song already exists, remove it
-    if (song in recentlyPlayed) {
-      delete recentlyPlayed[song]; //google said to use `delete`
-    // otherwise, it doesn't exist, ADD it.
-    } else {
-      recentlyPlayed[song] = datePlayed;
+  recordPlayed = (songPath) => {
+    const at = Date.now();
+    const withoutCurrent = Object.keys(this.state.recentlyPlayed)
+      .filter((path) => path !== songPath)
+      .reduce((acc, path) => ({ ...acc, [path]: this.state.recentlyPlayed[path] }), {});
+
+    const recentlyPlayed = {
+      [songPath]: {
+        title: prepareSongForDisplay(songPath),
+        at,
+      },
+      ...withoutCurrent,
+    };
+
+    const capped = Object.keys(recentlyPlayed)
+      .slice(0, RECENTS_CAP)
+      .reduce((acc, path) => ({ ...acc, [path]: recentlyPlayed[path] }), {});
+
+    this.setState({ recentlyPlayed: capped });
+  }
+
+  removeRecent = (songPath) => {
+    const recentlyPlayed = Object.keys(this.state.recentlyPlayed)
+      .filter((path) => path !== songPath)
+      .reduce((acc, path) => ({ ...acc, [path]: this.state.recentlyPlayed[path] }), {});
+    this.setState({ recentlyPlayed });
+  }
+
+  ensureSearchIndex = () => {
+    if (this.state.searchIndex || this.state.searchIndexError) {
+      return;
     }
-    this.setState({ recentlyPlayed });
+    if (this.searchIndexPromise) {
+      return;
+    }
+    this.setState({ searchIndexLoading: true });
+    this.searchIndexPromise = fetch(`${process.env.PUBLIC_URL}/json/index.json`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Search index unavailable (${response.status})`);
+        }
+        return response.json();
+      })
+      .then((searchIndex) => {
+        this.setState({
+          searchIndex,
+          searchIndexLoading: false,
+          searchIndexError: null,
+        });
+      })
+      .catch((err) => {
+        this.setState({
+          searchIndexLoading: false,
+          searchIndexError: err.message || 'Search unavailable',
+        });
+        this.searchIndexPromise = null;
+      });
   }
 
-
-  addToRecentlyPlayed = (song) => {
-    const datePlayed = Date.now();
-    const recentlyPlayed = {...this.state.recentlyPlayed};
-    recentlyPlayed[`song-${Date.now()}`] = song;
-    this.setState({ recentlyPlayed });
-    console.log(`${Object.keys(recentlyPlayed).length} recently played so far`);
+  handleSearchChange = (e) => {
+    this.setState({ searchQuery: e.target.value });
   }
 
-  // renders if any there are any favorites, or if any songs have been played
+  jumpToLetter = (letter) => {
+    this.props.history.push('/' + letterToRoute(letter));
+  }
+
+  searchResults = () => {
+    const { searchQuery, searchIndex } = this.state;
+    const query = searchQuery.trim().toLowerCase();
+    if (!query || !searchIndex) {
+      return [];
+    }
+    return searchIndex
+      .map((entry) => ({
+        ...entry,
+        title: prepareSongForDisplay(entry.path),
+      }))
+      .filter((entry) => entry.title.toLowerCase().indexOf(query) !== -1)
+      .slice(0, 50);
+  }
+
   renderDrawer = () => {
     const { favorites, recentlyPlayed } = this.state;
     const favoritesLength = Object.keys(favorites).length;
@@ -125,25 +255,104 @@ class App extends Component {
                   deleteAllRecents={this.deleteAllRecents}
                   recentlyPlayed={this.state.recentlyPlayed}
                   toggleAddRemoveFavorites={this.toggleAddRemoveFavorites}
-                  toggleAddRemoveRecentlyPlayed={this.toggleAddRemoveRecentlyPlayed} />
+                  removeRecent={this.removeRecent} />
       )
     }
+  }
 
+  renderSearch = () => {
+    const {
+      searchQuery,
+      searchIndexError,
+      searchIndexLoading,
+    } = this.state;
+    const results = this.searchResults();
+    const queryActive = searchQuery.trim().length > 0;
+
+    return (
+      <div className="search-wrapper">
+        <input
+          type="search"
+          className="song-search"
+          placeholder="Search all mixtapes…"
+          value={searchQuery}
+          disabled={!!searchIndexError}
+          onFocus={this.ensureSearchIndex}
+          onChange={this.handleSearchChange}
+        />
+        {searchIndexError ? (
+          <p className="search-status">{searchIndexError}</p>
+        ) : null}
+        {searchIndexLoading ? (
+          <p className="search-status">Loading search index…</p>
+        ) : null}
+        {queryActive && !searchIndexError ? (
+          <ul className="search-results">
+            {results.length === 0 ? (
+              <li className="search-empty">No matches</li>
+            ) : (
+              results.map((entry) => (
+                <li key={entry.path}>
+                  <span className="search-title">{entry.title}</span>
+                  <button
+                    type="button"
+                    onClick={() => this.jumpToLetter(entry.letter)}
+                  >
+                    Go to {entry.letter === 'NUM' ? '#' : entry.letter}
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        ) : null}
+      </div>
+    );
+  }
+
+  renderSongsArea = () => {
+    const { loading, error, songList, favorites, searchQuery } = this.state;
+    if (searchQuery.trim()) {
+      return null;
+    }
+    if (loading) {
+      return <div className="body-content">Loading…</div>;
+    }
+    if (error) {
+      return (
+        <div className="body-content">
+          <p>{error}</p>
+          <button type="button" onClick={this.retryLoad}>
+            Retry
+          </button>
+        </div>
+      );
+    }
+    return (
+      <Songs songList={songList}
+             key={this.state.activeLetter}
+             favorites={favorites}
+             toggleAddRemoveFavorites={this.toggleAddRemoveFavorites}
+             recordPlayed={this.recordPlayed}
+      />
+    );
   }
 
   render = () => {
+    const routeLetter = letterFromRoute(
+      this.props.match && this.props.match.params && this.props.match.params.letter
+    );
+    if (!routeLetter) {
+      return <NotFound />;
+    }
+
     return (
       <React.Fragment>
         <div className="container">
           <Header />
-          <AlphabetMenu selectLetter={this.selectLetter} activeLetter={this.state.activeLetter}/>
+          <AlphabetMenu activeLetter={this.state.activeLetter}/>
           { this.renderDrawer() }
-          <Songs songList={this.state.songList}
-                 key={this.state.activeLetter} //  “reset” some state when a prop changes
-                 favorites={this.state.favorites}
-                 toggleAddRemoveFavorites={this.toggleAddRemoveFavorites}
-                 toggleAddRemoveRecentlyPlayed={this.toggleAddRemoveRecentlyPlayed}
-          />
+          { this.renderSearch() }
+          { this.renderSongsArea() }
         </div>
         <ScrollToTop showUnder={160}>
             <span><i className="scroll-up fa fa-angle-double-up "></i></span>
@@ -164,16 +373,7 @@ class Header extends Component {
           <div className="social-media">
             <ul>
               <li>
-                <a href=""><i className="fab fa-twitter"></i></a>
-              </li>
-              <li>
-                <a href="" ><i className="fab fa-facebook"></i></a>
-              </li>
-              <li>
-                <a href="" ><i className="fas fa-share-square"></i></a>
-              </li>
-              <li>
-                <a href="" ><i className="far fa-envelope"></i></a>
+                <a href="mailto:josh@attenberg.org"><i className="far fa-envelope"></i></a>
               </li>
             </ul>
           </div>
@@ -183,23 +383,4 @@ class Header extends Component {
   }
 }
 
-/*
-class Row extends Component {
-  render() {
-    return (
-      <React.Fragment>
-        <div className="row">
-          <div className="pink-border col-xs-6 col-sm-3">.col-xs-6 .col-sm-3</div>
-          <div className="pink-border col-xs-6 col-sm-3">.col-xs-6 .col-sm-3</div>
-
-          <div className="clearfix visible-xs-block"></div>
-
-          <div className="pink-border col-xs-6 col-sm-3">.col-xs-6 .col-sm-3</div>
-          <div className="pink-border col-xs-6 col-sm-3">.col-xs-6 .col-sm-3</div>
-        </div>
-      </React.Fragment>
-    )
-  }
-}
-*/
 export default App;
