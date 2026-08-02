@@ -1,16 +1,51 @@
 import React, { Component } from 'react';
 import {
-  compareSongsForDisplay,
   mediaUrl,
   prepareSongForDisplay,
 } from './songUtils';
 
 /**
- * Declarative playlist view. Row click expands actions; play starts playback.
+ * Declarative playlist view. Album parents expand to tracks; row click expands
+ * play/favorite/download; play starts playback.
  */
 class Songs extends Component {
   state = {
+    expandedAlbumId: null,
     expandedPath: null,
+  }
+
+  albumTrackPaths = () => {
+    const { albums } = this.props;
+    return albums.reduce(
+      (paths, album) =>
+        album.tracks.reduce((acc, track) => ({ ...acc, [track]: true }), paths),
+      {}
+    );
+  }
+
+  buildDisplayRows = () => {
+    const { songList, albums } = this.props;
+    const inAlbum = this.albumTrackPaths();
+    const orphanTracks = songList.filter((path) => !inAlbum[path]);
+    const rows = [
+      ...albums.map((album) => ({
+        type: 'album',
+        album,
+        sortKey: album.title,
+      })),
+      ...orphanTracks.map((path) => ({
+        type: 'track',
+        path,
+        sortKey: prepareSongForDisplay(path),
+      })),
+    ];
+    return rows.sort((left, right) => left.sortKey.localeCompare(right.sortKey));
+  }
+
+  toggleAlbum = (albumId) => {
+    this.setState((state) => ({
+      expandedAlbumId: state.expandedAlbumId === albumId ? null : albumId,
+    }));
   }
 
   expandSong = (songPath) => {
@@ -27,9 +62,35 @@ class Songs extends Component {
     }
   }
 
-  renderSong = (song) => {
+  renderTrackActions = (song, songTitle, songSrc, favoriteClass) => {
+    const { toggleAddRemoveFavorites } = this.props;
+    return (
+      <div
+        className="clearfix favorite-download favorite-download--row"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <i
+          className={favoriteClass}
+          onClick={() => toggleAddRemoveFavorites(song)}
+          role="button"
+          aria-label="Toggle favorite"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              toggleAddRemoveFavorites(song);
+            }
+          }}
+        />
+        <a href={songSrc} aria-label="Download track">
+          <i className="download fas fa-download" />
+        </a>
+      </div>
+    );
+  }
+
+  renderTrackRow = (song, { nested } = { nested: false }) => {
     const {
-      toggleAddRemoveFavorites,
       favorites,
       currentlyPlayingPath,
     } = this.props;
@@ -44,6 +105,7 @@ class Songs extends Component {
         : 'favorite far fa-star';
     const rowClass = [
       'single-song-wrapper',
+      nested ? 'single-song-wrapper--nested' : null,
       isExpanded ? 'expanded' : null,
       isPlaying ? 'active' : null,
     ]
@@ -71,28 +133,65 @@ class Songs extends Component {
           ) : null}
           {songTitle}
         </span>
-        {isExpanded ? (
-          <div
-            className="clearfix favorite-download favorite-download--row"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <i
-              className={favoriteClass}
-              onClick={() => toggleAddRemoveFavorites(song)}
-              role="button"
-              aria-label="Toggle favorite"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  toggleAddRemoveFavorites(song);
+        {isExpanded
+          ? this.renderTrackActions(song, songTitle, songSrc, favoriteClass)
+          : null}
+      </li>
+    );
+  }
+
+  renderAlbumRow = (album) => {
+    const { currentlyPlayingPath } = this.props;
+    const { expandedAlbumId } = this.state;
+    const isExpanded = expandedAlbumId === album.id;
+    const isActive = album.tracks.indexOf(currentlyPlayingPath) !== -1;
+    const trackLabel =
+      album.tracks.length === 1 ? '1 track' : `${album.tracks.length} tracks`;
+    const rowClass = [
+      'single-song-wrapper',
+      'single-song-wrapper--album',
+      isExpanded ? 'expanded' : null,
+      isActive ? 'active' : null,
+    ]
+      .filter(Boolean)
+      .join(' ');
+
+    return (
+      <li className="album-group" key={`album-${album.id}`}>
+        <div
+          className={rowClass}
+          onClick={() => this.toggleAlbum(album.id)}
+          role="button"
+          tabIndex={0}
+          aria-expanded={isExpanded}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              this.toggleAlbum(album.id);
+            }
+          }}
+        >
+          <span className="title">
+            {isActive ? (
+              <i className="song-play-indicator fa fa-play" aria-hidden="true" />
+            ) : (
+              <i
+                className={
+                  'album-expand-indicator fa fa-' + (isExpanded ? 'minus' : 'plus')
                 }
-              }}
-            />
-            <a href={songSrc} aria-label="Download track">
-              <i className="download fas fa-download" />
-            </a>
-          </div>
+                aria-hidden="true"
+              />
+            )}
+            {album.title}
+          </span>
+          <span className="album-track-count">{trackLabel}</span>
+        </div>
+        {isExpanded ? (
+          <ul className="songlist songlist--album-tracks">
+            {album.tracks.map((track) =>
+              this.renderTrackRow(track, { nested: true })
+            )}
+          </ul>
         ) : null}
       </li>
     );
@@ -100,14 +199,18 @@ class Songs extends Component {
 
   render() {
     const { songList } = this.props;
-    const sortedSongList = [...songList].sort(compareSongsForDisplay);
+    const displayRows = this.buildDisplayRows();
     return (
       <div className="body-content">
         <div className="total-songs">
-          {sortedSongList.length > 0 ? sortedSongList.length + ' songs' : null}
+          {songList.length > 0 ? songList.length + ' songs' : null}
         </div>
         <ul className="songlist">
-          {sortedSongList.map((song) => this.renderSong(song))}
+          {displayRows.map((row) =>
+            row.type === 'album'
+              ? this.renderAlbumRow(row.album)
+              : this.renderTrackRow(row.path)
+          )}
         </ul>
       </div>
     );

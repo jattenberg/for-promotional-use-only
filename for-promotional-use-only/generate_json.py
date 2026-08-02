@@ -1,10 +1,18 @@
+import logging
 import os
 import sys
-import logging
+
 import boto3
 import orjson
 
-from .catalog import LETTERS, build_lists, is_audio_key, letter_for_key
+from .catalog import (
+    LETTERS,
+    build_letter_payloads,
+    build_lists,
+    detect_albums,
+    is_audio_key,
+    letter_for_key,
+)
 
 BUCKET = "for-promotional-use-only.com"
 FOLDER = "mixtape/"
@@ -43,36 +51,37 @@ def pretty_print_json(path, filename, data):
 
 
 def main():
-    logging.basicConfig(
-        format="%(asctime)s %(message)s", stream=sys.stdout, level="INFO"
-    )
+    logging.basicConfig(format="%(asctime)s %(message)s", stream=sys.stdout, level="INFO")
 
     os.makedirs(OUT_DIR, exist_ok=True)
 
     keys = [song["Key"] for song in song_iterator()]
-    lists = build_lists(keys)
+    payloads = build_letter_payloads(keys)
 
     index = [
         {"path": path, "letter": letter}
-        for letter, paths in lists.items()
-        for path in paths
+        for letter, payload in payloads.items()
+        for path in payload["tracks"]
     ]
 
-    for key, value in lists.items():
-        pretty_print_json(OUT_DIR, "%ssongs.json" % key, value)
+    for letter, payload in payloads.items():
+        pretty_print_json(OUT_DIR, "%ssongs.json" % letter, payload)
 
     pretty_print_json(OUT_DIR, "index.json", index)
     logging.info(
-        "wrote %d letter files and index.json (%d entries)",
-        len(lists),
+        "wrote %d letter files and index.json (%d entries, %d albums)",
+        len(payloads),
         len(index),
+        sum(len(payload["albums"]) for payload in payloads.values()),
     )
 
 
 # Re-export pure helpers for callers that imported them from this module.
 __all__ = [
     "LETTERS",
+    "build_letter_payloads",
     "build_lists",
+    "detect_albums",
     "is_audio_key",
     "letter_for_key",
     "main",

@@ -24,6 +24,22 @@ export const compareSongsForDisplay = (a, b) => {
   return prepareSongForDisplay(a).localeCompare(prepareSongForDisplay(b));
 };
 
+/**
+ * Normalize letter JSON payloads from legacy flat arrays or album-aware objects.
+ */
+export const parseLetterPayload = (payload) => {
+  if (Array.isArray(payload)) {
+    return { tracks: payload, albums: [] };
+  }
+  if (payload && Array.isArray(payload.tracks)) {
+    return {
+      tracks: payload.tracks,
+      albums: Array.isArray(payload.albums) ? payload.albums : [],
+    };
+  }
+  return { tracks: [], albums: [] };
+};
+
 export const mediaUrl = (path) => {
   return MEDIA_BASE + path.split('/').map(encodeURIComponent).join('/');
 };

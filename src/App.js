@@ -10,6 +10,7 @@ import {
   letterForSongKey,
   letterFromRoute,
   letterToRoute,
+  parseLetterPayload,
   prepareSongForDisplay,
   resumeSeekSeconds,
 } from './songUtils';
@@ -20,6 +21,7 @@ const RECENTS_CAP = 50;
 const defaultState = () => ({
   activeLetter: 'K',
   songList: [],
+  albums: [],
   favorites: {},
   recentlyPlayed: {},
   pendingPlay: null,
@@ -120,17 +122,19 @@ class App extends Component {
         if (this.fetchGeneration !== generation) {
           return;
         }
+        const { tracks, albums } = parseLetterPayload(songListJson);
         const pendingPlay = this.state.pendingPlay;
         const orphanPending =
           pendingPlay &&
           pendingPlay.path &&
-          songListJson.indexOf(pendingPlay.path) === -1;
+          tracks.indexOf(pendingPlay.path) === -1;
         const applyPending =
           pendingPlay &&
           pendingPlay.path &&
-          songListJson.indexOf(pendingPlay.path) !== -1;
+          tracks.indexOf(pendingPlay.path) !== -1;
         this.setState({
-          songList: songListJson,
+          songList: tracks,
+          albums,
           loading: false,
           error: null,
           ...(orphanPending ? { pendingPlay: null } : {}),
@@ -500,6 +504,7 @@ class App extends Component {
       loading,
       error,
       songList,
+      albums,
       favorites,
       searchQuery,
       currentlyPlayingPath,
@@ -523,6 +528,7 @@ class App extends Component {
     return (
       <Songs
         songList={songList}
+        albums={albums}
         key={this.state.activeLetter}
         favorites={favorites}
         currentlyPlayingPath={currentlyPlayingPath}
