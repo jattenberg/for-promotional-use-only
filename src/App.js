@@ -5,9 +5,11 @@ import Drawer from './Drawer';
 import ScrollToTop from 'react-scroll-up';
 import NotFound from './NotFound';
 import {
+  letterForSongKey,
   letterFromRoute,
   letterToRoute,
   prepareSongForDisplay,
+  resumeSeekSeconds,
 } from './songUtils';
 
 const STATE_KEY = 'state.v2';
@@ -18,6 +20,7 @@ const defaultState = () => ({
   songList: [],
   favorites: {},
   recentlyPlayed: {},
+  pendingPlay: null,
   loading: false,
   error: null,
   searchQuery: '',
@@ -114,10 +117,16 @@ class App extends Component {
         if (this.fetchGeneration !== generation) {
           return;
         }
+        const pendingPlay = this.state.pendingPlay;
+        const orphanPending =
+          pendingPlay &&
+          pendingPlay.path &&
+          songListJson.indexOf(pendingPlay.path) === -1;
         this.setState({
           songList: songListJson,
           loading: false,
           error: null,
+          ...(orphanPending ? { pendingPlay: null } : {}),
         });
       })
       .catch((err) => {
@@ -164,6 +173,7 @@ class App extends Component {
 
   recordPlayed = (songPath) => {
     const at = Date.now();
+    const previous = this.state.recentlyPlayed[songPath] || {};
     const withoutCurrent = Object.keys(this.state.recentlyPlayed)
       .filter((path) => path !== songPath)
       .reduce((acc, path) => ({ ...acc, [path]: this.state.recentlyPlayed[path] }), {});
@@ -172,6 +182,14 @@ class App extends Component {
       [songPath]: {
         title: prepareSongForDisplay(songPath),
         at,
+        positionSeconds:
+          typeof previous.positionSeconds === 'number'
+            ? previous.positionSeconds
+            : 0,
+        durationSeconds:
+          typeof previous.durationSeconds === 'number'
+            ? previous.durationSeconds
+            : null,
       },
       ...withoutCurrent,
     };
@@ -183,11 +201,89 @@ class App extends Component {
     this.setState({ recentlyPlayed: capped });
   }
 
+  updatePlaybackPosition = (songPath, positionSeconds, durationSeconds) => {
+    const existing = this.state.recentlyPlayed[songPath];
+    if (!existing) {
+      return;
+    }
+    const nextPosition = Number(positionSeconds);
+    const nextDuration = Number(durationSeconds);
+    const position = Number.isFinite(nextPosition) && nextPosition >= 0
+      ? nextPosition
+      : 0;
+    const duration =
+      Number.isFinite(nextDuration) && nextDuration > 0 ? nextDuration : null;
+
+    // Ignore near-zero writes that would wipe a meaningful saved offset
+    // (common when a new <audio> starts at t=0 before resume seek applies).
+    const previousPosition = Number(existing.positionSeconds) || 0;
+    if (position < 1 && previousPosition > 5) {
+      return;
+    }
+
+    if (
+      existing.positionSeconds === position &&
+      existing.durationSeconds === duration
+    ) {
+      return;
+    }
+
+    this.setState({
+      recentlyPlayed: {
+        ...this.state.recentlyPlayed,
+        [songPath]: {
+          ...existing,
+          positionSeconds: position,
+          durationSeconds: duration,
+          at: Date.now(),
+        },
+      },
+    });
+  }
+
   removeRecent = (songPath) => {
     const recentlyPlayed = Object.keys(this.state.recentlyPlayed)
       .filter((path) => path !== songPath)
       .reduce((acc, path) => ({ ...acc, [path]: this.state.recentlyPlayed[path] }), {});
     this.setState({ recentlyPlayed });
+  }
+
+  seekForPath = (songPath, { resume }) => {
+    const recent = this.state.recentlyPlayed[songPath];
+    if (!resume) {
+      return 0;
+    }
+    if (!recent) {
+      return 0;
+    }
+    return resumeSeekSeconds(recent.positionSeconds, recent.durationSeconds);
+  }
+
+  playMixtape = (songPath, { resume } = { resume: false }) => {
+    if (!songPath) {
+      return;
+    }
+    const letter = letterForSongKey(songPath);
+    const seekTo = this.seekForPath(songPath, { resume: !!resume });
+    const pendingPlay = { path: songPath, seekTo };
+    const routeLetter = letterFromRoute(
+      this.props.match && this.props.match.params && this.props.match.params.letter
+    );
+
+    if (routeLetter !== letter) {
+      this.setState({ pendingPlay }, () => {
+        this.props.history.push('/' + letterToRoute(letter));
+      });
+      return;
+    }
+
+    this.setState({ pendingPlay });
+  }
+
+  clearPendingPlay = () => {
+    if (this.state.pendingPlay) {
+      this.setState({ pendingPlay: null });
+    }
   }
 
   ensureSearchIndex = () => {
@@ -255,7 +351,8 @@ class App extends Component {
                   deleteAllRecents={this.deleteAllRecents}
                   recentlyPlayed={this.state.recentlyPlayed}
                   toggleAddRemoveFavorites={this.toggleAddRemoveFavorites}
-                  removeRecent={this.removeRecent} />
+                  removeRecent={this.removeRecent}
+                  onPlayMixtape={this.playMixtape} />
       )
     }
   }
@@ -310,7 +407,14 @@ class App extends Component {
   }
 
   renderSongsArea = () => {
-    const { loading, error, songList, favorites, searchQuery } = this.state;
+    const {
+      loading,
+      error,
+      songList,
+      favorites,
+      searchQuery,
+      pendingPlay,
+    } = this.state;
     if (searchQuery.trim()) {
       return null;
     }
@@ -331,8 +435,11 @@ class App extends Component {
       <Songs songList={songList}
              key={this.state.activeLetter}
              favorites={favorites}
+             pendingPlay={pendingPlay}
              toggleAddRemoveFavorites={this.toggleAddRemoveFavorites}
              recordPlayed={this.recordPlayed}
+             updatePlaybackPosition={this.updatePlaybackPosition}
+             onPendingPlayConsumed={this.clearPendingPlay}
       />
     );
   }

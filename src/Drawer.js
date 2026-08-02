@@ -27,7 +27,10 @@ class TemporaryDrawer extends React.Component {
     });
   };
 
-  toggleFavesDelete = (path) => {
+  toggleFavesDelete = (path, e) => {
+    if (e) {
+      e.stopPropagation();
+    }
     this.props.toggleAddRemoveFavorites(path);
   }
 
@@ -45,6 +48,19 @@ class TemporaryDrawer extends React.Component {
     }
   }
 
+  playEntry = (path, { resume }) => (e) => {
+    e.stopPropagation();
+    this.setState({ left: false });
+    if (this.props.onPlayMixtape) {
+      this.props.onPlayMixtape(path, { resume });
+    }
+  }
+
+  removeRecent = (path, e) => {
+    e.stopPropagation();
+    this.props.removeRecent(path);
+  }
+
   renderFavorites = (favorites) => {
     if (Object.keys(favorites).length < 1) {
       return (
@@ -56,9 +72,15 @@ class TemporaryDrawer extends React.Component {
       const title = entry && entry.title ? entry.title : path;
       return (
         <li key={path}>
-          {title}
+          <button
+            type="button"
+            className="drawer-play"
+            onClick={this.playEntry(path, { resume: true })}
+          >
+            {title}
+          </button>
           <span className="delete"
-                onClick={ ()=> this.toggleFavesDelete(path)}>
+                onClick={ (e)=> this.toggleFavesDelete(path, e)}>
                 <i className="fas fa-times"></i>
           </span>
         </li>
@@ -77,9 +99,15 @@ class TemporaryDrawer extends React.Component {
       const title = entry && entry.title ? entry.title : path;
       return (
         <li key={path}>
-          {title}
+          <button
+            type="button"
+            className="drawer-play"
+            onClick={this.playEntry(path, { resume: true })}
+          >
+            {title}
+          </button>
           <span className="delete"
-                onClick={ ()=> this.props.removeRecent(path)}>
+                onClick={ (e)=> this.removeRecent(path, e)}>
                 <i className="fas fa-times"></i>
           </span>
         </li>
@@ -141,14 +169,7 @@ class TemporaryDrawer extends React.Component {
         </div>
 
         <Drawer open={this.state.left} classes={ { "paper": "drawer-override" } } onClose={this.toggleDrawer('left', false)} ModalProps={ modalProps }>
-          <div
-            tabIndex={0}
-            role="button"
-            onClick={this.toggleDrawer('left', true)}
-            onKeyDown={this.toggleDrawer('left', false)}
-          >
-            {sideList}
-          </div>
+          {sideList}
         </Drawer>
       </div>
     );
@@ -157,6 +178,7 @@ class TemporaryDrawer extends React.Component {
 
 TemporaryDrawer.propTypes = {
   classes: PropTypes.object.isRequired,
+  onPlayMixtape: PropTypes.func,
 };
 
 export default withStyles(styles)(TemporaryDrawer);

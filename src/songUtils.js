@@ -60,3 +60,36 @@ export const letterToRoute = (letter) => {
   }
   return String(letter).toLowerCase();
 };
+
+/** Seconds near the end of a track that should restart from 0 on resume. */
+export const NEAR_END_SECONDS = 5;
+
+/**
+ * Choose a seek offset for resume playback.
+ *
+ * Returns 0 when position is missing, non-finite, negative, or within
+ * NEAR_END_SECONDS of duration (treat finished listens as a fresh start).
+ *
+ * Args:
+ *   positionSeconds (number|null|undefined): Last known currentTime.
+ *   durationSeconds (number|null|undefined): Last known duration, if any.
+ *
+ * Returns:
+ *   number: Non-negative seek offset in seconds.
+ */
+export const resumeSeekSeconds = (positionSeconds, durationSeconds) => {
+  const position = Number(positionSeconds);
+  if (!Number.isFinite(position) || position <= 0) {
+    return 0;
+  }
+  const duration = Number(durationSeconds);
+  if (Number.isFinite(duration) && duration > 0) {
+    if (position >= duration - NEAR_END_SECONDS) {
+      return 0;
+    }
+    if (position >= duration) {
+      return 0;
+    }
+  }
+  return position;
+};
