@@ -23,7 +23,7 @@ Regenerating letter JSON lists the live `mixtape/` prefix in S3 (requires AWS cr
 uv run python -m promo_catalog.generate_json
 ```
 
-Writes `public/json/` (copied into `dist/json/` on build). `bash build_python.sh` only syncs the Python env for offline work.
+Writes `public/json/` (copied into `dist/json/` on build) and regenerates `public/sitemap.xml` (home + letter routes). `bash build_python.sh` only syncs the Python env for offline work.
 
 ## Build and test
 

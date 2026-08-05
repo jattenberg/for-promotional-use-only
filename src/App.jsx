@@ -1,10 +1,12 @@
+import { useEffect } from 'react';
 import ScrollToTop from 'react-scroll-up';
 import AlphabetMenu from './AlphabetMenu';
 import BottomPlaybackBar from './BottomPlaybackBar';
 import Drawer from './Drawer';
+import { promoDocumentTitle, setDocumentCanonical } from './documentTitle';
 import NotFound from './NotFound';
 import Songs from './Songs';
-import { letterFromRoute } from './songUtils';
+import { letterFromRoute, letterToRoute } from './songUtils';
 import { usePromoApp } from './usePromoApp';
 import { useParams, useNavigate } from 'react-router-dom';
 
@@ -34,6 +36,14 @@ export default function App() {
   const routeLetter = letterFromRoute(letter);
   const navigate = useNavigate();
   const app = usePromoApp(routeLetter, navigate);
+
+  useEffect(() => {
+    if (!routeLetter) {
+      return;
+    }
+    document.title = promoDocumentTitle(app.activeLetter, app.searchQuery);
+    setDocumentCanonical('/' + letterToRoute(routeLetter));
+  }, [routeLetter, app.activeLetter, app.searchQuery]);
 
   if (!routeLetter) {
     return <NotFound />;

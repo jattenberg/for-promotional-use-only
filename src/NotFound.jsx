@@ -1,9 +1,18 @@
-import React from 'react';
+import { useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { NOT_FOUND_DOCUMENT_TITLE, setDocumentCanonical } from './documentTitle';
 
-const NotFound = () => (
-  <div className="container">
-    <h2>not found, sorry.</h2>
-  </div>
-)
+export default function NotFound() {
+  const location = useLocation();
 
-export default NotFound;
+  useEffect(() => {
+    document.title = NOT_FOUND_DOCUMENT_TITLE;
+    setDocumentCanonical(location.pathname);
+  }, [location.pathname]);
+
+  return (
+    <div className="container">
+      <h2>not found, sorry.</h2>
+    </div>
+  );
+}

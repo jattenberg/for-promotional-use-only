@@ -40,6 +40,9 @@ jobs:
       - name: Run catalog bucketing checks
         run: uv run python tests/test_bucketing.py
 
+      - name: Run sitemap loc checks
+        run: uv run python tests/test_sitemap.py
+
       - name: Run ingest Lambda unit tests
         run: uv run --with pytest python -m pytest tests/test_events_ingest.py -q
 

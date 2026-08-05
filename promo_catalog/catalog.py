@@ -5,6 +5,8 @@ import string
 LETTERS = string.ascii_uppercase
 AUDIO_EXTENSIONS = (".mp3", ".m4a", ".mp4")
 MIXTAPE_PREFIX = "mixtape/"
+SITE_ORIGIN = "https://for-promotional-use-only.com"
+SITEMAP_PATH = "public/sitemap.xml"
 
 NUMBERED_TRACK_RE = re.compile(
     r"^(?:\d{1,2}-\d{2}\s|\d{2}\s|Track\d{2})",
@@ -186,3 +188,73 @@ def build_letter_payloads(keys):
             "albums": letter_albums,
         }
     return payloads
+
+
+def letter_to_route(letter):
+    """
+    Map a catalog letter key to its public URL path segment.
+
+    Args:
+        letter (str): A–Z or NUM.
+
+    Returns:
+        str: Lowercase letter or ``num``.
+    """
+    if letter == "NUM":
+        return "num"
+    return str(letter).lower()
+
+
+def sitemap_locs(origin=SITE_ORIGIN):
+    """
+    Absolute URLs for the letter sitemap (home + A–Z + /num only).
+
+    Args:
+        origin (str, default: SITE_ORIGIN): Site origin with no trailing slash.
+
+    Returns:
+        list[str]: At most 28 absolute URLs; never includes track paths.
+    """
+    base = origin.rstrip("/")
+    letter_paths = [f"/{letter_to_route(letter)}" for letter in LETTERS]
+    return [f"{base}/", *[f"{base}{path}" for path in letter_paths], f"{base}/num"]
+
+
+def build_sitemap_xml(origin=SITE_ORIGIN):
+    """
+    Render a urlset XML document for letter browse routes.
+
+    Args:
+        origin (str, default: SITE_ORIGIN): Site origin with no trailing slash.
+
+    Returns:
+        str: Sitemap XML including a trailing newline.
+    """
+    urls = "\n".join(
+        f"  <url>\n    <loc>{loc}</loc>\n  </url>" for loc in sitemap_locs(origin)
+    )
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        f"{urls}\n"
+        "</urlset>\n"
+    )
+
+
+def write_sitemap(path=SITEMAP_PATH, origin=SITE_ORIGIN):
+    """
+    Write ``sitemap.xml`` beside the public catalog assets.
+
+    Args:
+        path (str, default: SITEMAP_PATH): Destination filesystem path.
+        origin (str, default: SITE_ORIGIN): Absolute site origin for <loc> values.
+
+    Returns:
+        str: Path written.
+    """
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as handle:
+        handle.write(build_sitemap_xml(origin))
+    return path

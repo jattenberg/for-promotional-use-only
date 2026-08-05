@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://for-promotional-use-only.com/sitemap.xml
