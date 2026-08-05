@@ -42,7 +42,7 @@ One-time OIDC setup (uses `personal` profile):
 bash infra/phase2/setup-github-actions-oidc.sh
 ```
 
-Creates role `github-actions-for-promotional-use-only-deploy` trusted for `repo:jattenberg/for-promotional-use-only:*` with the deploy policy inline. `.github/workflows/ci.yml` runs tests on every PR/push and deploys on `master` merge (app bucket sync + CloudFront invalidation + HTTP smoke).
+Creates role `github-actions-for-promotional-use-only-deploy` trusted for `repo:jattenberg/for-promotional-use-only:*` with the deploy policy inline. `.github/workflows/ci.yml` runs tests on every PR/push and deploys on `main` merge (app bucket sync + CloudFront invalidation + HTTP smoke).
 
 ## Exit criteria
 

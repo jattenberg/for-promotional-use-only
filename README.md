@@ -53,7 +53,7 @@ Never sync or delete against the media bucket root — `mixtape/` is ~243 GiB.
 
 ## CI
 
-GitHub Actions (`.github/workflows/ci.yml`): `npm ci`, `uv sync`, Vitest, catalog bucketing checks, and `vite build` on every PR and push. Merges to `master` deploy `dist/` to the app bucket and invalidate CloudFront.
+GitHub Actions (`.github/workflows/ci.yml`): `npm ci`, `uv sync`, Vitest, catalog bucketing checks, and `vite build` on every PR and push. Merges to `main` deploy `dist/` to the app bucket and invalidate CloudFront.
 
 One-time AWS OIDC setup:
 
@@ -70,7 +70,7 @@ npm run smoke:cross-letter
 ```
 
 Playwright UI smokes need a Chromium install once: `npx playwright install chromium`.
-On merges to `master`, CI runs both UI smokes against production after deploy.
+On merges to `main`, CI runs both UI smokes against production after deploy.
 
 ## Add media
 

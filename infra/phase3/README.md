@@ -104,4 +104,4 @@ uv run --with duckdb python scripts/query_events.py \
 - `POST https://for-promotional-use-only.com/events` with valid key → 204 + raw NDJSON in bucket
 - Unauthorized → 401
 - Daily schedule `promo-events-compact-daily` enabled
-- SPA ships with `VITE_PROMO_EVENTS_KEY` on master deploy
+- SPA ships with `VITE_PROMO_EVENTS_KEY` on main deploy
