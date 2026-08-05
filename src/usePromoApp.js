@@ -56,6 +56,7 @@ export function usePromoApp(routeLetter, navigate) {
 
   const fetchGeneration = useRef(0);
   const searchIndexPromise = useRef(null);
+  const catalogIndexPromise = useRef(null);
   const pendingPlayRef = useRef(pendingPlay);
   pendingPlayRef.current = pendingPlay;
 
@@ -116,16 +117,33 @@ export function usePromoApp(routeLetter, navigate) {
       });
   }, []);
 
-  useEffect(() => {
-    fetch(`${assetBase}json/index.json`)
+  const ensureCatalogPaths = useCallback(() => {
+    if (catalogPaths.length) {
+      return Promise.resolve(catalogPaths);
+    }
+    if (catalogIndexPromise.current) {
+      return catalogIndexPromise.current;
+    }
+    catalogIndexPromise.current = fetch(`${assetBase}json/index.json`)
       .then((response) => (response.ok ? response.json() : []))
       .then((index) => {
-        if (Array.isArray(index)) {
-          setCatalogPaths(index.map((entry) => entry.path).filter(Boolean));
+        if (!Array.isArray(index)) {
+          return [];
         }
+        const paths = index.map((entry) => entry.path).filter(Boolean);
+        setCatalogPaths(paths);
+        return paths;
       })
-      .catch(() => {});
-  }, []);
+      .catch(() => [])
+      .finally(() => {
+        catalogIndexPromise.current = null;
+      });
+    return catalogIndexPromise.current;
+  }, [catalogPaths]);
+
+  useEffect(() => {
+    ensureCatalogPaths();
+  }, [ensureCatalogPaths]);
 
   useEffect(() => {
     if (routeLetter) {
@@ -329,14 +347,18 @@ export function usePromoApp(routeLetter, navigate) {
           return;
         }
 
-        const catalogOrder = catalogPaths.length ? catalogPaths : letterOrder;
-        const catalogIndex = catalogOrder.indexOf(currentlyPlayingPath);
-        if (catalogIndex >= 0 && catalogIndex < catalogOrder.length - 1) {
-          playMixtape(catalogOrder[catalogIndex + 1]);
-          return;
-        }
-
-        clearPlayback();
+        ensureCatalogPaths().then((catalogOrder) => {
+          if (!catalogOrder.length) {
+            clearPlayback();
+            return;
+          }
+          const catalogIndex = catalogOrder.indexOf(currentlyPlayingPath);
+          if (catalogIndex >= 0 && catalogIndex < catalogOrder.length - 1) {
+            playMixtape(catalogOrder[catalogIndex + 1]);
+            return;
+          }
+          clearPlayback();
+        });
         return;
       }
 
@@ -349,9 +371,9 @@ export function usePromoApp(routeLetter, navigate) {
       clearPlayback();
     },
     [
-      catalogPaths,
       clearPlayback,
       currentlyPlayingPath,
+      ensureCatalogPaths,
       navigationSongList,
       playMixtape,
     ]

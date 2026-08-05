@@ -33,6 +33,10 @@ export default function BottomPlaybackBar({
   const didSeek = useRef(false);
   const lastPosWrite = useRef(0);
   const seekListener = useRef(null);
+  const seekToSecondsRef = useRef(seekToSeconds);
+  const trySeekRef = useRef(null);
+  const flushFromElementRef = useRef(null);
+  seekToSecondsRef.current = seekToSeconds;
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -67,6 +71,7 @@ export default function BottomPlaybackBar({
     },
     [currentPath, seekToSeconds, updatePlaybackPosition]
   );
+  flushFromElementRef.current = flushFromElement;
 
   const flushPosition = useCallback(
     (event, { ended } = { ended: false }) => {
@@ -177,6 +182,7 @@ export default function BottomPlaybackBar({
     },
     [onSeekApplied, seekToSeconds]
   );
+  trySeekRef.current = trySeek;
 
   useEffect(() => {
     const audio = audioEl.current;
@@ -185,7 +191,7 @@ export default function BottomPlaybackBar({
     }
 
     if (audioElPath.current && audioElPath.current !== currentPath) {
-      flushFromElement(audio);
+      flushFromElementRef.current?.(audio);
     }
 
     if (!currentPath) {
@@ -199,40 +205,56 @@ export default function BottomPlaybackBar({
     didSeek.current = false;
     audio.src = mediaUrl(currentPath);
     audio.load();
-    trySeek(audio);
 
-    const autoplayDelay = seekToSeconds > 0 ? 0 : AUTOPLAY_DELAY_MS;
-    const timer = window.setTimeout(() => {
-      const playPromise = audio.play();
-      if (playPromise && typeof playPromise.catch === 'function') {
-        playPromise.catch(() => {});
-      }
-    }, autoplayDelay);
-
-    return () => {
-      window.clearTimeout(timer);
+    const clearSeekListeners = () => {
       if (seekListener.current) {
         audio.removeEventListener('loadedmetadata', seekListener.current);
         audio.removeEventListener('canplay', seekListener.current);
         seekListener.current = null;
       }
     };
-  }, [currentPath, flushFromElement, seekToSeconds, trySeek]);
+
+    const pendingSeek = seekToSecondsRef.current > 0;
+    if (pendingSeek) {
+      trySeekRef.current?.(audio);
+      return clearSeekListeners;
+    }
+
+    const timer = window.setTimeout(() => {
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {});
+      }
+    }, AUTOPLAY_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+      clearSeekListeners();
+    };
+  }, [currentPath]);
 
   useEffect(() => {
-    if (seekToSeconds > 0 && !didSeek.current && audioEl.current) {
-      trySeek(audioEl.current);
+    const audio = audioEl.current;
+    if (
+      !audio ||
+      !currentPath ||
+      audioElPath.current !== currentPath ||
+      seekToSeconds <= 0 ||
+      didSeek.current
+    ) {
+      return;
     }
-  }, [seekToSeconds, trySeek]);
+    trySeekRef.current?.(audio);
+  }, [seekToSeconds, currentPath]);
 
   useEffect(() => {
     const audio = audioEl.current;
     return () => {
       if (audio && audioElPath.current) {
-        flushFromElement(audio);
+        flushFromElementRef.current?.(audio);
       }
     };
-  }, [flushFromElement]);
+  }, [currentPath]);
 
   const togglePlayPause = useCallback(() => {
     const audio = audioEl.current;

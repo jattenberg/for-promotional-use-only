@@ -381,13 +381,28 @@ describe('BottomPlaybackBar callbacks', () => {
 
   it('seeks to the resume offset then clears via onSeekApplied', () => {
     const onSeekApplied = vi.fn();
-    act(() => {
-      renderBar(songA, { seekToSeconds: 33, onSeekApplied });
-    });
+    const barProps = {
+      seekToSeconds: 33,
+      onSeekApplied,
+      favorites: {},
+      toggleAddRemoveFavorites: vi.fn(),
+      recordPlayed: vi.fn(),
+      updatePlaybackPosition: vi.fn(),
+      onNext: vi.fn(),
+      onPrevious: vi.fn(),
+    };
+    const view = render(<BottomPlaybackBar currentPath={songA} {...barProps} />);
     act(() => {
       primeAudioForSeek(getAudio());
     });
     expect(onSeekApplied).toHaveBeenCalled();
+    expect(getAudio()?.currentTime).toBe(33);
+    const srcAfterSeek = getAudio()?.src;
+
+    act(() => {
+      view.rerender(<BottomPlaybackBar currentPath={songA} {...barProps} seekToSeconds={0} />);
+    });
+    expect(getAudio()?.src).toBe(srcAfterSeek);
     expect(getAudio()?.currentTime).toBe(33);
   });
 });
