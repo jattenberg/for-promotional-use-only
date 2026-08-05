@@ -1,63 +1,59 @@
 # For Promotional Use Only
-Classic rave mixtapes from the 90s and beyond
 
-This project was bootstrapped with [Create React App](https://github.com/facebookincubator/create-react-app), Twitter Bootstrap (Lumen), Google Fonts
+Classic rave mixtapes from the 90s and beyond.
 
-## Get Started
-Critical: make sure the latest version of [Node](https://nodejs.org/en/) and [NPM](https://docs.npmjs.com/troubleshooting/try-the-latest-stable-version-of-npm) are installed.
+Vite + React 18 + react-router v6. Stylus compiles via Vite. Python catalog via `uv` and `promo_catalog`.
 
-No `.nvmrc` / Node 16 pin is required — `NODE_OPTIONS=--openssl-legacy-provider` is baked into the npm scripts, so plain `npm ci && npm start` works on modern Node.
+## Get started
 
-### Running Locally:
-```
-npm ci
-npm start
-```
-
-### Deploying
-
-Production is served via **CloudFront + ACM** on `https://for-promotional-use-only.com` (Phase 1). See `infra/phase1/README.md` for cutover, rollback, and lockdown steps.
-
-Generate the catalog **before** building (CRA copies `public/json/` into `build/`):
-```
-bash build_python.sh
-for-promotional-use-only-virtualenv/bin/python -m for-promotional-use-only.generate_json
-npm run build
-```
-
-After CloudFront is live, deploy **app objects only** (never `mixtape/`):
+Requires [Node](https://nodejs.org/) and [uv](https://docs.astral.sh/uv/).
 
 ```bash
+npm ci
+npm run dev
+```
+
+Open http://localhost:5173 — letter routes like `/k` and `/num` work with the dev server.
+
+## Catalog JSON
+
+Regenerating letter JSON lists the live `mixtape/` prefix in S3 (requires AWS credentials):
+
+```bash
+uv run python -m promo_catalog.generate_json
+```
+
+Writes `public/json/` (copied into `dist/json/` on build). `bash build_python.sh` only syncs the Python env for offline work.
+
+## Build and test
+
+```bash
+npm run build   # output: dist/
+npm test        # vitest
+```
+
+## Deploy
+
+Production: CloudFront + app bucket. See `infra/phase1/README.md` and `infra/phase2/README.md`.
+
+```bash
+uv run python -m promo_catalog.generate_json   # when catalog changed
+bash build_python.sh
+npm run build
 bash scripts/deploy.sh
 ```
 
-Phase 1 cutover helper (syncs to media bucket — superseded after Phase 2 app split):
+Never sync or delete against the media bucket root — `mixtape/` is ~243 GiB.
 
-```
-bash infra/phase1/deploy-app.sh
-```
+## Production smoke
 
-Legacy cleartext S3 website deploy (pre-cutover only):
-```
-aws s3 sync build/ s3://for-promotional-use-only.com/ --exclude "mixtape/*" --profile personal
-```
-
-Never use `aws s3 sync --delete` against the bucket root — `mixtape/` holds ~243 GiB of media with versioning off.
-
-### Production smoke
-```
+```bash
 python3 scripts/prod_smoke.py
-PROMO_SMOKE_BASE=https://for-promotional-use-only.com node scripts/prod_ui_smoke.mjs
+node scripts/prod_ui_smoke.mjs
 ```
 
-### adding new songs:
-`aws s3 sync your-folder-with-songs s3://for-promotional-use-only.com/mixtape/ --profile personal`
+## Add media
 
-### rebuilding json files:
+```bash
+aws s3 sync your-folder-with-songs s3://for-promotional-use-only.com/mixtape/ --profile personal
 ```
-bash build_python.sh
-for-promotional-use-only-virtualenv/bin/python -m for-promotional-use-only.generate_json
-```
-This writes letter lists and `index.json` under `public/json/`. Then `npm run build` copies them into `build/json/` for deploy.
-
-`Dockerfile.dev` exists for local Docker development only.

@@ -20,14 +20,15 @@ bash infra/phase2/clean-media-cruft.sh     # remove precache-manifest.* from med
 ## Deploy (safe --delete)
 
 ```bash
-# Optional: regenerate catalog first
-bash build_python.sh
-for-promotional-use-only-virtualenv/bin/python -m for-promotional-use-only.generate_json
+# Optional: regenerate catalog from S3 when mixtape changed
+uv run python -m promo_catalog.generate_json
 
+bash build_python.sh
+npm run build
 bash scripts/deploy.sh
 ```
 
-`scripts/deploy.sh` syncs `build/` to the **app bucket only** with `--delete`. Media is never in `build/`, so `mixtape/` cannot be touched.
+`scripts/deploy.sh` syncs `dist/` to the **app bucket only** with `--delete`. Media is never in `dist/`, so `mixtape/` cannot be touched.
 
 ## IAM
 
@@ -35,6 +36,6 @@ Least-privilege deploy policy: `infra/phase2/deploy-iam-policy.json` (app bucket
 
 ## Exit criteria
 
-- `aws s3 sync build/ s3://for-promotional-use-only-app/ --delete` does not affect media.
+- `aws s3 sync dist/ s3://for-promotional-use-only-app/ --delete` does not affect media.
 - Site still loads over HTTPS; Range audio on `/mixtape/*` works.
 - `python3 scripts/prod_smoke.py` — ALL_PASS.

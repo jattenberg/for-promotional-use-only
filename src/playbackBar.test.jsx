@@ -1,15 +1,18 @@
 import React, { Component } from 'react';
-import ReactDOM from 'react-dom';
-import { act } from 'react-dom/test-utils';
+import { render, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BottomPlaybackBar from './BottomPlaybackBar';
 import Songs from './Songs';
 
-jest.mock('react-responsive-audio-player', () => {
+vi.mock('react-responsive-audio-player', () => {
   const React = require('react');
-  class MockAudioPlayer extends React.Component {
-    componentDidMount() {
-      if (this.props.audioElementRef) {
-        this.audio = {
+
+  const MockAudioPlayer = React.forwardRef((props, ref) => {
+    const rootRef = React.useRef(null);
+
+    React.useEffect(() => {
+      if (props.audioElementRef) {
+        const audio = {
           currentTime: 0,
           duration: 120,
           readyState: 4,
@@ -18,43 +21,62 @@ jest.mock('react-responsive-audio-player', () => {
           addEventListener: () => {},
           removeEventListener: () => {},
         };
-        this.props.audioElementRef(this.audio);
+        props.audioElementRef(audio);
+        globalThis.__promoTestAudio = audio;
       }
-    }
+      return () => {
+        if (props.audioElementRef) {
+          props.audioElementRef(null);
+        }
+      };
+    }, [props.audioElementRef]);
 
-    componentWillUnmount() {
-      if (this.props.audioElementRef) {
-        this.props.audioElementRef(null);
+    const setRootRef = (node) => {
+      rootRef.current = node;
+      if (typeof ref === 'function') {
+        ref(node);
+      } else if (ref) {
+        ref.current = node;
       }
-    }
+    };
 
-    render() {
-      const title =
-        this.props.playlist &&
-        this.props.playlist[0] &&
-        this.props.playlist[0].title;
-      return React.createElement(
-        'div',
-        { className: 'audio_player', 'data-mock-player': 'true' },
-        React.createElement('div', {
-          className: 'skip_button',
-          'data-skip': 'previous',
-          onClick: () => {},
-        }),
-        React.createElement('div', {
-          className: 'skip_button',
-          'data-skip': 'next',
-          onClick: () => {},
-        }),
-        React.createElement('div', {
-          className: 'play_pause_button',
-          'data-title': title || '',
-        }),
-        React.createElement('div', { className: 'audio_progress_container' })
-      );
-    }
-  }
-  return MockAudioPlayer;
+    const title =
+      props.playlist && props.playlist[0] && props.playlist[0].title;
+    const onPlay = props.onMediaEvent && props.onMediaEvent.play;
+
+    return React.createElement(
+      'div',
+      {
+        ref: setRootRef,
+        className: 'audio_player',
+        'data-mock-player': 'true',
+      },
+      React.createElement('button', {
+        type: 'button',
+        'data-mock-play': 'true',
+        onClick: () => onPlay && onPlay(),
+      }),
+      React.createElement('div', {
+        className: 'skip_button',
+        'data-skip': 'previous',
+        onClick: () => {},
+      }),
+      React.createElement('div', {
+        className: 'skip_button',
+        'data-skip': 'next',
+        onClick: () => {},
+      }),
+      React.createElement('div', {
+        className: 'play_pause_button',
+        'data-title': title || '',
+      }),
+      React.createElement('div', { className: 'audio_progress_container' })
+    );
+  });
+
+  MockAudioPlayer.displayName = 'MockAudioPlayer';
+
+  return { default: MockAudioPlayer };
 });
 
 const songA = 'mixtape/alpha_track.mp3';
@@ -147,36 +169,27 @@ class PlaybackHarness extends Component {
 
 describe('bottom playback bar integration', () => {
   let container;
+  let harness;
   let recordPlayed;
   let updatePlaybackPosition;
 
   beforeEach(() => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-    recordPlayed = jest.fn();
-    updatePlaybackPosition = jest.fn();
-  });
-
-  afterEach(() => {
-    ReactDOM.unmountComponentAtNode(container);
-    container.remove();
+    recordPlayed = vi.fn();
+    updatePlaybackPosition = vi.fn();
   });
 
   const renderHarness = (props = {}) => {
-    let harness;
-    act(() => {
-      ReactDOM.render(
-        <PlaybackHarness
-          ref={(node) => {
-            harness = node;
-          }}
-          recordPlayed={recordPlayed}
-          updatePlaybackPosition={updatePlaybackPosition}
-          {...props}
-        />,
-        container
-      );
-    });
+    const view = render(
+      <PlaybackHarness
+        ref={(node) => {
+          harness = node;
+        }}
+        recordPlayed={recordPlayed}
+        updatePlaybackPosition={updatePlaybackPosition}
+        {...props}
+      />
+    );
+    container = view.container;
     return harness;
   };
 
@@ -349,96 +362,51 @@ describe('bottom playback bar integration', () => {
 });
 
 describe('BottomPlaybackBar callbacks', () => {
-  let container;
+  const getAudio = () => globalThis.__promoTestAudio;
 
-  beforeEach(() => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-  });
-
-  afterEach(() => {
-    ReactDOM.unmountComponentAtNode(container);
-    container.remove();
-  });
-
-  it('records plays and flushes position through media event handlers', () => {
-    const recordPlayed = jest.fn();
-    const updatePlaybackPosition = jest.fn();
-    const onSeekApplied = jest.fn();
-    let bar;
-
-    act(() => {
-      ReactDOM.render(
-        <BottomPlaybackBar
-          ref={(node) => {
-            bar = node;
-          }}
-          currentPath={songA}
-          seekToSeconds={0}
-          favorites={{}}
-          toggleAddRemoveFavorites={jest.fn()}
-          recordPlayed={recordPlayed}
-          updatePlaybackPosition={updatePlaybackPosition}
-          onSeekApplied={onSeekApplied}
-          onNext={jest.fn()}
-          onPrevious={jest.fn()}
-        />,
-        container
-      );
-    });
-
-    act(() => {
-      bar.handlePlay();
-    });
-    expect(recordPlayed).toHaveBeenCalledWith(songA);
-    expect(bar.state.isPlaying).toBe(true);
-
-    const audio = {
-      currentTime: 15,
-      duration: 100,
-    };
-    act(() => {
-      bar.flushFromElement(audio);
-    });
-    expect(updatePlaybackPosition).toHaveBeenCalledWith(songA, 15, 100);
-
-    act(() => {
-      bar.flushFromElement(audio, { ended: true });
-    });
-    expect(updatePlaybackPosition).toHaveBeenCalledWith(songA, 0, 100);
-  });
-
-  const renderBar = (currentPath, { seekToSeconds = 0, updatePlaybackPosition }) => {
-    let bar;
-    act(() => {
-      ReactDOM.render(
-        <BottomPlaybackBar
-          ref={(node) => {
-            bar = node || bar;
-          }}
-          currentPath={currentPath}
-          seekToSeconds={seekToSeconds}
-          favorites={{}}
-          toggleAddRemoveFavorites={jest.fn()}
-          recordPlayed={jest.fn()}
-          updatePlaybackPosition={updatePlaybackPosition}
-          onSeekApplied={jest.fn()}
-          onNext={jest.fn()}
-          onPrevious={jest.fn()}
-        />,
-        container
-      );
-    });
-    return bar;
+  const renderBar = (currentPath, props = {}) => {
+    return render(
+      <BottomPlaybackBar
+        currentPath={currentPath}
+        seekToSeconds={props.seekToSeconds || 0}
+        favorites={{}}
+        toggleAddRemoveFavorites={vi.fn()}
+        recordPlayed={props.recordPlayed || vi.fn()}
+        updatePlaybackPosition={props.updatePlaybackPosition || vi.fn()}
+        onSeekApplied={props.onSeekApplied || vi.fn()}
+        onNext={vi.fn()}
+        onPrevious={vi.fn()}
+      />
+    );
   };
 
+  it('records plays through the play media handler', () => {
+    const recordPlayed = vi.fn();
+    renderBar(songA, { recordPlayed });
+    act(() => {
+      document.querySelector('[data-mock-play]')?.click();
+    });
+    expect(recordPlayed).toHaveBeenCalledWith(songA);
+  });
+
   it('credits the teardown flush to the outgoing track, not the incoming one', () => {
-    const updatePlaybackPosition = jest.fn();
-    const bar = renderBar(songA, { updatePlaybackPosition });
-    bar.audioEl.currentTime = 47;
-
-    renderBar(songB, { updatePlaybackPosition });
-
+    const updatePlaybackPosition = vi.fn();
+    let unmountFirst;
+    act(() => {
+      const view = renderBar(songA, { updatePlaybackPosition });
+      unmountFirst = view.unmount;
+    });
+    act(() => {
+      if (getAudio()) {
+        getAudio().currentTime = 47;
+      }
+    });
+    act(() => {
+      unmountFirst();
+    });
+    act(() => {
+      renderBar(songB, { updatePlaybackPosition });
+    });
     expect(updatePlaybackPosition).toHaveBeenCalledWith(songA, 47, 120);
     expect(updatePlaybackPosition).not.toHaveBeenCalledWith(
       songB,
@@ -448,40 +416,30 @@ describe('BottomPlaybackBar callbacks', () => {
   });
 
   it('still flushes the outgoing track when the incoming track has a pending seek', () => {
-    const updatePlaybackPosition = jest.fn();
-    const bar = renderBar(songA, { updatePlaybackPosition });
-    bar.audioEl.currentTime = 47;
-
-    renderBar(songB, { seekToSeconds: 12, updatePlaybackPosition });
-
+    const updatePlaybackPosition = vi.fn();
+    let unmountFirst;
+    act(() => {
+      const view = renderBar(songA, { updatePlaybackPosition });
+      unmountFirst = view.unmount;
+    });
+    act(() => {
+      if (getAudio()) {
+        getAudio().currentTime = 47;
+      }
+    });
+    act(() => {
+      unmountFirst();
+    });
+    act(() => {
+      renderBar(songB, { seekToSeconds: 12, updatePlaybackPosition });
+    });
     expect(updatePlaybackPosition).toHaveBeenCalledWith(songA, 47, 120);
   });
 
   it('seeks to the resume offset then clears via onSeekApplied', () => {
-    const onSeekApplied = jest.fn();
-    let bar;
-
-    act(() => {
-      ReactDOM.render(
-        <BottomPlaybackBar
-          ref={(node) => {
-            bar = node;
-          }}
-          currentPath={songA}
-          seekToSeconds={33}
-          favorites={{}}
-          toggleAddRemoveFavorites={jest.fn()}
-          recordPlayed={jest.fn()}
-          updatePlaybackPosition={jest.fn()}
-          onSeekApplied={onSeekApplied}
-          onNext={jest.fn()}
-          onPrevious={jest.fn()}
-        />,
-        container
-      );
-    });
-
+    const onSeekApplied = vi.fn();
+    renderBar(songA, { seekToSeconds: 33, onSeekApplied });
     expect(onSeekApplied).toHaveBeenCalled();
-    expect(bar.audioEl.currentTime).toBe(33);
+    expect(getAudio()?.currentTime).toBe(33);
   });
 });

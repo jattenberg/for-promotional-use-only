@@ -134,10 +134,26 @@ body
 
 .drawer-backdrop-override
   background-color transparent !important
+.drawer-backdrop
+  position fixed
+  inset 0
+  z-index 1199
+.drawer-panel
+  position fixed
+  left 0
+  top 0
+  height 100%
+  z-index 1200
+  max-width 27%
+  min-width 405px
+  background-color #29739a !important
+  transform translateX(-100%)
+  transition transform 0.2s ease
+  &.drawer-panel--open
+    transform translateX(0)
 .drawer-override
   max-width 27%
   min-width 405px
-  //background-color lighten(silver,25) !important
   background-color #29739a !important
 .open-drawer
   i.fas.fa-star

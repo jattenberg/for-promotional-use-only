@@ -1,18 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-venv="for-promotional-use-only-virtualenv"
-
-echo "building virtualenv: $venv"
-
-hash virtualenv
-if [ "$?" != "0" ];
-  then
-    pip install virtualenv;
-fi
-
-virtualenv $venv
-
-echo "installing for-promotional-use-only"
-$venv/bin/pip install -e .
-
-
+# Sync the local Python env only. Catalog JSON generation lists live S3 and
+# requires AWS credentials — run explicitly when needed:
+#   uv run python -m promo_catalog.generate_json
+uv sync
