@@ -1,4 +1,4 @@
-export const MEDIA_BASE = 'http://for-promotional-use-only.com/';
+export const MEDIA_BASE = 'https://for-promotional-use-only.com/';
 
 export const titleCase = (input) => {
   return input.trim()

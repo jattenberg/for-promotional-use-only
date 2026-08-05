@@ -10,7 +10,7 @@
  */
 import { chromium } from "playwright";
 
-const BASE = (process.env.PROMO_SMOKE_BASE || "http://for-promotional-use-only.com").replace(
+const BASE = (process.env.PROMO_SMOKE_BASE || "https://for-promotional-use-only.com").replace(
   /\/$/,
   ""
 );

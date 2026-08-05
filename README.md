@@ -15,15 +15,33 @@ npm start
 ```
 
 ### Deploying
+
+Production is served via **CloudFront + ACM** on `https://for-promotional-use-only.com` (Phase 1). See `infra/phase1/README.md` for cutover, rollback, and lockdown steps.
+
 Generate the catalog **before** building (CRA copies `public/json/` into `build/`):
 ```
 bash build_python.sh
 for-promotional-use-only-virtualenv/bin/python -m for-promotional-use-only.generate_json
 npm run build
-aws s3 cp build/ s3://for-promotional-use-only.com/ --recursive --profile personal
+```
+
+After CloudFront is live, deploy **app objects only** (never `mixtape/`):
+```
+bash infra/phase1/deploy-app.sh
+```
+
+Legacy cleartext S3 website deploy (pre-cutover only):
+```
+aws s3 sync build/ s3://for-promotional-use-only.com/ --exclude "mixtape/*" --profile personal
 ```
 
 Never use `aws s3 sync --delete` against the bucket root — `mixtape/` holds ~243 GiB of media with versioning off.
+
+### Production smoke
+```
+python3 scripts/prod_smoke.py
+PROMO_SMOKE_BASE=https://for-promotional-use-only.com node scripts/prod_ui_smoke.mjs
+```
 
 ### adding new songs:
 `aws s3 sync your-folder-with-songs s3://for-promotional-use-only.com/mixtape/ --profile personal`

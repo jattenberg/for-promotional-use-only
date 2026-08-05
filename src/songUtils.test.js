@@ -21,13 +21,13 @@ describe('prepareSongForDisplay', () => {
 describe('mediaUrl', () => {
   it('encodes spaces as %20 and preserves /', () => {
     expect(mediaUrl('mixtape/a track with spaces.mp3')).toBe(
-      'http://for-promotional-use-only.com/mixtape/a%20track%20with%20spaces.mp3'
+      'https://for-promotional-use-only.com/mixtape/a%20track%20with%20spaces.mp3'
     );
   });
 
   it('keeps nested / and escapes # and &', () => {
     expect(mediaUrl('mixtape/sub dir/track #1 & more.m4a')).toBe(
-      'http://for-promotional-use-only.com/mixtape/sub%20dir/track%20%231%20%26%20more.m4a'
+      'https://for-promotional-use-only.com/mixtape/sub%20dir/track%20%231%20%26%20more.m4a'
     );
   });
 });
