@@ -19,6 +19,11 @@
 - [x] Function URL public invoke (InvokeFunctionUrl + InvokeFunction)
 - [x] CloudFront `/events*` → Function URL
 - [x] Smoke: CF POST /events → 204 / 401 + S3 raw objects
-- [ ] Set GitHub secret `VITE_PROMO_EVENTS_KEY` from `.state/promo-events-key.txt`
-- [ ] Commit / PR / merge so production SPA builds with the key
+- [x] Set GitHub secret `VITE_PROMO_EVENTS_KEY` from `.state/promo-events-key.txt`
+- [x] Commit / PR / merge so production SPA builds with the key
+
+Follow-ups after merge (2026-08-05):
+- [x] Land [#49](https://github.com/jattenberg/for-promotional-use-only/pull/49) (retry/backoff + header logo) — merged + deployed
+- [ ] Confirm first daily compact (`cron(15 8 * * ? *)`) wrote Parquet (after ~08:15 UTC)
+- [x] Confirm production SPA bundle inlines a non-empty events key (`VITE_PROMO_EVENTS_KEY` secret present; bundle has secret-like literal)
 
