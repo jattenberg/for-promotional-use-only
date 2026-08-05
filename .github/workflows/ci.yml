@@ -40,8 +40,14 @@ jobs:
       - name: Run catalog bucketing checks
         run: uv run python tests/test_bucketing.py
 
+      - name: Run ingest Lambda unit tests
+        run: uv run --with pytest python -m pytest tests/test_events_ingest.py -q
+
       - name: Build production bundle
         run: npm run build
+        env:
+          VITE_PROMO_EVENTS_KEY: ${{ secrets.VITE_PROMO_EVENTS_KEY }}
+          VITE_PROMO_EVENTS_URL: /events
 
   deploy:
     name: Deploy to production
@@ -70,6 +76,9 @@ jobs:
 
       - name: Build production bundle
         run: npm run build
+        env:
+          VITE_PROMO_EVENTS_KEY: ${{ secrets.VITE_PROMO_EVENTS_KEY }}
+          VITE_PROMO_EVENTS_URL: /events
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { getEventLogger } from './events';
 import { mediaUrl, prepareSongForDisplay } from './songUtils';
 
 const POSITION_FLUSH_MS = 2000;
@@ -86,6 +87,13 @@ export default function BottomPlaybackBar({
     if (currentPath && recordPlayed) {
       recordPlayed(currentPath);
     }
+    if (currentPath) {
+      getEventLogger().track(
+        'play_started',
+        { song_path: currentPath },
+        typeof location !== 'undefined' ? location.pathname : '/'
+      );
+    }
   }, [currentPath, recordPlayed]);
 
   const handlePause = useCallback(
@@ -124,11 +132,19 @@ export default function BottomPlaybackBar({
     (event) => {
       setIsPlaying(false);
       flushPosition(event, { ended: true });
+      const trackPath = audioElPath.current || currentPath;
+      if (trackPath) {
+        getEventLogger().track(
+          'play_completed',
+          { song_path: trackPath },
+          typeof location !== 'undefined' ? location.pathname : '/'
+        );
+      }
       if (onNext) {
         onNext();
       }
     },
-    [flushPosition, onNext]
+    [currentPath, flushPosition, onNext]
   );
 
   const trySeek = useCallback(
