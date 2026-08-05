@@ -24,6 +24,6 @@
 
 Follow-ups after merge (2026-08-05):
 - [x] Land [#49](https://github.com/jattenberg/for-promotional-use-only/pull/49) (retry/backoff + header logo) — merged + deployed
-- [ ] Confirm first daily compact (`cron(15 8 * * ? *)`) wrote Parquet (after ~08:15 UTC)
+- [x] Confirm first compact wrote Parquet (`events/parquet/dt=2026-08-05/part-000.parquet`, 8 rows; daily rule still ENABLED)
 - [x] Confirm production SPA bundle inlines a non-empty events key (`VITE_PROMO_EVENTS_KEY` secret present; bundle has secret-like literal)
 
