@@ -21,11 +21,11 @@ aws s3 sync dist/ "s3://${BUCKET}/" \
   --region "${AWS_REGION}" \
   --exclude "mixtape/*"
 
-echo "==> Creating CloudFront invalidation for /index.html and /static/*"
+echo "==> Creating CloudFront invalidation for /index.html, /assets/*, and /static/*"
 INVALIDATION_ID="$(aws cloudfront create-invalidation \
   --distribution-id "${DIST_ID}" \
   --profile "${AWS_PROFILE}" \
-  --paths "/index.html" "/static/*" \
+  --paths "/index.html" "/assets/*" "/static/*" \
   --query 'Invalidation.Id' \
   --output text)"
 

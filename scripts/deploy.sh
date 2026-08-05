@@ -23,11 +23,11 @@ aws s3 sync dist/ "s3://${APP_BUCKET}/" \
   --region "${AWS_REGION}" \
   --delete
 
-echo "==> Invalidating CloudFront /index.html and /static/*"
+echo "==> Invalidating CloudFront /index.html, /assets/*, and /static/*"
 INVALIDATION_ID="$(aws cloudfront create-invalidation \
   --distribution-id "${DISTRIBUTION_ID}" \
   --profile "${AWS_PROFILE}" \
-  --paths "/index.html" "/static/*" \
+  --paths "/index.html" "/assets/*" "/static/*" \
   --query 'Invalidation.Id' \
   --output text)"
 
