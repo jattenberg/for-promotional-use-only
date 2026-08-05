@@ -1,27 +1,26 @@
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { letterToRoute } from './songUtils';
 
 const alphabetConst = 'abcdefghijklmnopqrstuvwxyz'.toUpperCase().split('');
 
 export default function AlphabetMenu({ activeLetter }) {
-  const navigate = useNavigate();
-
   const activeLetterClass = (letter) =>
     activeLetter === letter ? 'active-letter' : '';
 
-  const navigateToLetter = (letter) => {
-    navigate('/' + letterToRoute(letter));
+  const createLetter = (letter, label = letter) => {
+    const isActive = activeLetter === letter;
+    return (
+      <li key={letter} className={activeLetterClass(letter)}>
+        <Link
+          to={'/' + letterToRoute(letter)}
+          aria-current={isActive ? 'page' : undefined}
+          aria-label={letter === 'NUM' ? 'Numbers and symbols' : undefined}
+        >
+          {label}
+        </Link>
+      </li>
+    );
   };
-
-  const createLetter = (letter) => (
-    <li
-      key={letter}
-      onClick={() => navigateToLetter(letter)}
-      className={activeLetterClass(letter)}
-    >
-      {letter}
-    </li>
-  );
 
   return (
     <div className="header-wrapper">
@@ -29,18 +28,12 @@ export default function AlphabetMenu({ activeLetter }) {
       <div className="alphabet-menu-wrapper">
         <div className="horizontal-line" />
         <div className="horizontal-line" />
-        <div className="horizontal-scroller">
+        <nav className="horizontal-scroller" aria-label="Browse by letter">
           <ul>
-            <li
-              key="NUM"
-              onClick={() => navigateToLetter('NUM')}
-              className={activeLetterClass('NUM')}
-            >
-              #
-            </li>
+            {createLetter('NUM', '#')}
             {alphabetConst.map((letter) => createLetter(letter))}
           </ul>
-        </div>
+        </nav>
         <div className="horizontal-line margin-top-zero" />
         <div className="horizontal-line" />
       </div>
