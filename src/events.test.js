@@ -72,6 +72,207 @@ describe('createEventLogger', () => {
     expect(logger.getQueue()).toEqual([]);
   });
 
+  it('re-queues the batch when the server returns a 5xx', async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 503 });
+    const logger = createEventLogger({
+      fetchImpl,
+      sessionId: '11111111-1111-4111-8111-111111111111',
+      flushMs: 1000,
+      enabled: true,
+    });
+
+    logger.track('page_view', {}, '/k');
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(logger.getQueue()).toHaveLength(1);
+  });
+
+  it('discards the batch when the server returns a 4xx', async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 401 });
+    const logger = createEventLogger({
+      fetchImpl,
+      sessionId: '11111111-1111-4111-8111-111111111111',
+      flushMs: 1000,
+      enabled: true,
+    });
+
+    logger.track('page_view', {}, '/k');
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(logger.getQueue()).toEqual([]);
+  });
+
+  it('re-queues the batch when the request throws', async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi.fn().mockRejectedValue(new Error('offline'));
+    const logger = createEventLogger({
+      fetchImpl,
+      sessionId: '11111111-1111-4111-8111-111111111111',
+      flushMs: 1000,
+      enabled: true,
+    });
+
+    logger.track('page_view', {}, '/k');
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(logger.getQueue()).toHaveLength(1);
+  });
+
+  it('drops an unsendable oversized event and still flushes the rest', async () => {
+    vi.useFakeTimers();
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: true, status: 204 });
+    const logger = createEventLogger({
+      fetchImpl,
+      sessionId: '11111111-1111-4111-8111-111111111111',
+      flushMs: 1000,
+      enabled: true,
+    });
+
+    logger.track('search', { query: 'x'.repeat(40000) }, '/k');
+    logger.track('page_view', {}, '/k');
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(fetchImpl.mock.calls[0][1].body).events).toHaveLength(1);
+    expect(logger.getQueue()).toEqual([]);
+    warn.mockRestore();
+  });
+
+  it('backs off exponentially across consecutive failures', async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 503 });
+    const logger = createEventLogger({
+      fetchImpl,
+      sessionId: '11111111-1111-4111-8111-111111111111',
+      flushMs: 1000,
+      random: () => 1,
+      enabled: true,
+    });
+
+    logger.track('page_view', {}, '/k');
+
+    // First attempt on the normal cadence, then ceilings of 2x, 4x, 8x.
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(1999);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(3999);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+
+    await vi.advanceTimersByTimeAsync(8000);
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    expect(logger.getFailureCount()).toBe(4);
+    expect(logger.getQueue()).toHaveLength(1);
+  });
+
+  it('never retries sooner than the normal flush interval', async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 503 });
+    const logger = createEventLogger({
+      fetchImpl,
+      sessionId: '11111111-1111-4111-8111-111111111111',
+      flushMs: 1000,
+      random: () => 0,
+      enabled: true,
+    });
+
+    logger.track('page_view', {}, '/k');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(999);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('caps the backoff delay', async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi.fn().mockResolvedValue({ ok: false, status: 503 });
+    const logger = createEventLogger({
+      fetchImpl,
+      sessionId: '11111111-1111-4111-8111-111111111111',
+      flushMs: 60000,
+      random: () => 1,
+      enabled: true,
+    });
+
+    logger.track('page_view', {}, '/k');
+    await vi.advanceTimersByTimeAsync(60000);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+
+    // 60s * 2^1 exceeds the 5 minute cap, so the wait is the cap itself.
+    await vi.advanceTimersByTimeAsync(300000);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('resets the backoff after a successful flush', async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 503 })
+      .mockResolvedValue({ ok: true, status: 204 });
+    const logger = createEventLogger({
+      fetchImpl,
+      sessionId: '11111111-1111-4111-8111-111111111111',
+      flushMs: 1000,
+      random: () => 1,
+      enabled: true,
+    });
+
+    logger.track('page_view', {}, '/k');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(logger.getFailureCount()).toBe(1);
+
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(logger.getFailureCount()).toBe(0);
+    expect(logger.getQueue()).toEqual([]);
+
+    // Back on the normal cadence for the next event.
+    logger.track('page_view', {}, '/k');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+  });
+
+  it('resets the backoff after a permanent 4xx', async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 503 })
+      .mockResolvedValue({ ok: false, status: 400 });
+    const logger = createEventLogger({
+      fetchImpl,
+      sessionId: '11111111-1111-4111-8111-111111111111',
+      flushMs: 1000,
+      random: () => 1,
+      enabled: true,
+    });
+
+    logger.track('page_view', {}, '/k');
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(logger.getFailureCount()).toBe(1);
+
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(logger.getFailureCount()).toBe(0);
+    expect(logger.getQueue()).toEqual([]);
+  });
+
   it('ignores unknown event names', () => {
     const logger = createEventLogger({
       fetchImpl: vi.fn(),
