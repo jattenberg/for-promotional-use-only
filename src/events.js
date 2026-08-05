@@ -1,4 +1,5 @@
 const FLUSH_MS = 5000;
+const MAX_BACKOFF_MS = 5 * 60 * 1000;
 const MAX_BATCH = 50;
 const MAX_BODY_BYTES = 32 * 1024;
 const SEARCH_DEBOUNCE_MS = 600;
@@ -44,6 +45,16 @@ const isoNow = () => new Date().toISOString();
 
 const encodeBatch = (events) => JSON.stringify({ events });
 
+// 4xx responses (bad key, malformed batch) cannot succeed on replay, so only
+// server errors and unreadable responses are worth re-queueing.
+const isRetryable = (response) => {
+  if (!response || response.ok !== false) {
+    return false;
+  }
+  const status = Number(response.status);
+  return !Number.isFinite(status) || status >= 500;
+};
+
 /**
  * Create a batched product-event client.
  *
@@ -53,10 +64,12 @@ const encodeBatch = (events) => JSON.stringify({ events });
  *   options.sessionId (string, optional): Fixed session id.
  *   options.enabled (boolean, optional): Force enable/disable.
  *   options.flushMs (number, optional): Flush interval.
+ *   options.random (function, optional): Jitter source (tests).
  */
 export function createEventLogger(options = {}) {
   const fetchImpl = options.fetchImpl || (typeof fetch !== 'undefined' ? fetch.bind(globalThis) : null);
   const now = options.now || isoNow;
+  const random = options.random || Math.random;
   const sessionId = options.sessionId || readSessionId();
   const flushMs = options.flushMs ?? FLUSH_MS;
   const enabled =
@@ -65,12 +78,26 @@ export function createEventLogger(options = {}) {
   let queue = [];
   let timer = null;
   let flushing = false;
+  let failures = 0;
 
   const clearTimer = () => {
     if (timer != null && typeof clearTimeout === 'function') {
       clearTimeout(timer);
     }
     timer = null;
+  };
+
+  // Jittered exponential backoff, floored at the normal cadence so a retry
+  // never fires sooner than a healthy flush would. Jitter spreads retries
+  // across tabs and clients instead of synchronising them into a thundering
+  // herd against a recovering origin (Brooker, "Exponential Backoff and
+  // Jitter", AWS Architecture Blog, 2015).
+  const nextDelay = () => {
+    if (failures === 0) {
+      return flushMs;
+    }
+    const ceiling = Math.min(MAX_BACKOFF_MS, flushMs * 2 ** failures);
+    return flushMs + random() * Math.max(0, ceiling - flushMs);
   };
 
   const scheduleFlush = () => {
@@ -80,7 +107,7 @@ export function createEventLogger(options = {}) {
     timer = setTimeout(() => {
       timer = null;
       flush();
-    }, flushMs);
+    }, nextDelay());
   };
 
   const track = (eventName, props = {}, path = typeof location !== 'undefined' ? location.pathname : '/') => {
@@ -115,14 +142,25 @@ export function createEventLogger(options = {}) {
     };
     const batch = takeFittingBatch(queue.slice(0, MAX_BATCH));
     if (!batch.length) {
-      queue = queue.slice(1);
+      const [oversized, ...rest] = queue;
+      queue = rest;
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('[events] dropped oversized event', oversized?.event);
+      }
+      if (queue.length) {
+        scheduleFlush();
+      }
       return;
     }
     const body = encodeBatch(batch);
     queue = queue.slice(batch.length);
+    const retry = () => {
+      queue = [...batch, ...queue].slice(0, MAX_BATCH * 2);
+      failures += 1;
+    };
     flushing = true;
     try {
-      await fetchImpl(eventsUrl(), {
+      const response = await fetchImpl(eventsUrl(), {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -131,8 +169,13 @@ export function createEventLogger(options = {}) {
         body,
         keepalive: true,
       });
+      if (isRetryable(response)) {
+        retry();
+      } else {
+        failures = 0;
+      }
     } catch {
-      queue = [...batch, ...queue].slice(0, MAX_BATCH * 2);
+      retry();
     } finally {
       flushing = false;
       if (queue.length) {
@@ -164,6 +207,7 @@ export function createEventLogger(options = {}) {
     flush,
     installPageLifecycle,
     getQueue: () => queue,
+    getFailureCount: () => failures,
     isEnabled: () => enabled,
   };
 }
