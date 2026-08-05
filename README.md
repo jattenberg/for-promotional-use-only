@@ -45,6 +45,16 @@ bash scripts/deploy.sh
 
 Never sync or delete against the media bucket root — `mixtape/` is ~243 GiB.
 
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`): `npm ci`, `uv sync`, Vitest, catalog bucketing checks, and `vite build` on every PR and push. Merges to `master` deploy `dist/` to the app bucket and invalidate CloudFront.
+
+One-time AWS OIDC setup:
+
+```bash
+bash infra/phase2/setup-github-actions-oidc.sh
+```
+
 ## Production smoke
 
 ```bash
