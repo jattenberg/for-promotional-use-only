@@ -16,7 +16,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-BASE = os.environ.get("PROMO_SMOKE_BASE", "http://for-promotional-use-only.com").rstrip("/")
+BASE = os.environ.get("PROMO_SMOKE_BASE", "https://for-promotional-use-only.com").rstrip("/")
 UA = {"User-Agent": "promo-smoke/1.0"}
 MAIN_CHUNK_PATTERN = re.compile(r"/static/js/main\.[0-9a-f]+\.chunk\.js")
 
