@@ -17,12 +17,13 @@ Open http://localhost:5173 — letter routes like `/k` and `/num` work with the 
 
 ## Catalog JSON
 
+Regenerating letter JSON lists the live `mixtape/` prefix in S3 (requires AWS credentials):
+
 ```bash
-bash build_python.sh
-# or: uv run python -m promo_catalog.generate_json
+uv run python -m promo_catalog.generate_json
 ```
 
-Writes `public/json/` (copied into `dist/json/` on build).
+Writes `public/json/` (copied into `dist/json/` on build). `bash build_python.sh` only syncs the Python env for offline work.
 
 ## Build and test
 
@@ -36,7 +37,9 @@ npm test        # vitest
 Production: CloudFront + app bucket. See `infra/phase1/README.md` and `infra/phase2/README.md`.
 
 ```bash
+uv run python -m promo_catalog.generate_json   # when catalog changed
 bash build_python.sh
+npm run build
 bash scripts/deploy.sh
 ```
 

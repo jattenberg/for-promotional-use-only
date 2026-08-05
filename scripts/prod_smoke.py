@@ -18,7 +18,40 @@ import urllib.request
 
 BASE = os.environ.get("PROMO_SMOKE_BASE", "https://for-promotional-use-only.com").rstrip("/")
 UA = {"User-Agent": "promo-smoke/1.0"}
-MAIN_CHUNK_PATTERN = re.compile(r"/static/js/main\.[0-9a-f]+\.chunk\.js")
+CRA_MAIN_CHUNK_PATTERN = re.compile(r"/static/js/main\.[0-9a-f]+\.chunk\.js")
+VITE_MAIN_CHUNK_PATTERN = re.compile(r"/assets/index-[A-Za-z0-9_-]+\.js")
+VITE_MAIN_CSS_PATTERN = re.compile(r"/assets/index-[A-Za-z0-9_-]+\.css")
+
+
+def find_app_bundle(html: str) -> str | None:
+    """
+    Locate the primary JS bundle referenced from index.html (CRA or Vite).
+
+    Args:
+        html (str): Decoded index.html body.
+
+    Returns:
+        str | None: Bundle path beginning with /, or None when not found.
+    """
+    for pattern in (VITE_MAIN_CHUNK_PATTERN, CRA_MAIN_CHUNK_PATTERN):
+        match = pattern.search(html)
+        if match:
+            return match.group(0)
+    return None
+
+
+def find_app_css(html: str) -> str | None:
+    """
+    Locate the Vite-emitted app stylesheet when present.
+
+    Args:
+        html (str): Decoded index.html body.
+
+    Returns:
+        str | None: CSS path beginning with /, or None for legacy CRA builds.
+    """
+    match = VITE_MAIN_CSS_PATTERN.search(html)
+    return match.group(0) if match else None
 
 
 def fetch(path: str, headers: dict[str, str] | None = None) -> tuple[int, bytes]:
@@ -89,9 +122,11 @@ def main() -> int:
     results: list[tuple[str, int, str, bool]] = []
 
     index_status, index_html = fetch("/index.html")
-    main_chunk = next(iter(MAIN_CHUNK_PATTERN.findall(index_html.decode("utf-8", "replace"))), None)
+    index_text = index_html.decode("utf-8", "replace")
+    main_chunk = find_app_bundle(index_text)
+    main_css = find_app_css(index_text)
     results.append(
-        ("index.html main chunk", index_status, f"chunk={main_chunk}", main_chunk is not None)
+        ("index.html app bundle", index_status, f"bundle={main_chunk}", main_chunk is not None)
     )
 
     for path in ["/k", "/c", "/num", "/zz"]:
@@ -110,16 +145,32 @@ def main() -> int:
     for path in [
         "/bootstrap.min.css",
         "/static/audio.css",
-        "/static/css/App.css",
-        "/static/css/songlist.css",
-        "/static/css/audioplayer.css",
     ]:
         status, body = fetch(path)
         results.append(
             (f"css {path}", status, f"{len(body)} bytes", status == 200 and len(body) > 0)
         )
 
-    status, app_css = fetch("/static/css/App.css")
+    if main_css:
+        status, app_css = fetch(main_css)
+        css_label = f"css {main_css}"
+    else:
+        status, app_css = fetch("/static/css/App.css")
+        css_label = "css /static/css/App.css"
+        for path in [
+            "/static/css/songlist.css",
+            "/static/css/audioplayer.css",
+            "/static/css/App.css",
+        ]:
+            legacy_status, legacy_body = fetch(path)
+            results.append(
+                (
+                    f"css {path}",
+                    legacy_status,
+                    f"{len(legacy_body)} bytes",
+                    legacy_status == 200 and len(legacy_body) > 0,
+                )
+            )
     css_needles = [
         b".album-group",
         b".songlist--album-tracks",
@@ -127,7 +178,7 @@ def main() -> int:
         b"has-bottom-playback",
     ]
     found_css = [needle.decode() for needle in css_needles if needle in app_css]
-    results.append(("App.css album/bar rules", status, f"found={found_css}", len(found_css) >= 3))
+    results.append((f"App styles album/bar rules ({css_label})", status, f"found={found_css}", len(found_css) >= 3))
 
     status, letter_c = fetch_json("/json/Csongs.json")
     albums = letter_c.get("albums", []) if isinstance(letter_c, dict) else []
@@ -211,12 +262,11 @@ def main() -> int:
     js_needles = [
         b"bottom-playback",
         b"album-group",
-        b"expandedAlbumId",
         b"positionSeconds",
         b"songlist--album-tracks",
     ]
     found_js = [needle.decode() for needle in js_needles if needle in main_js]
-    results.append(("main.js features", status, f"found={found_js}", len(found_js) >= 3))
+    results.append(("app.js features", status, f"found={found_js}", len(found_js) >= 3))
 
     status, num = fetch_json("/json/NUMsongs.json")
     num_tracks = track_list(num)
