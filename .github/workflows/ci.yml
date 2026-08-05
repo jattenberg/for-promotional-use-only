@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test and build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Sync Python environment
+        run: uv sync
+
+      - name: Run unit tests
+        run: npm test
+
+      - name: Run catalog bucketing checks
+        run: uv run python tests/test_bucketing.py
+
+      - name: Build production bundle
+        run: npm run build
+
+  deploy:
+    name: Deploy to production
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: us-east-1
+      APP_BUCKET: for-promotional-use-only-app
+      DISTRIBUTION_ID: E3N3G42L4RB0UV
+      AWS_PROFILE: ""
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Build production bundle
+        run: npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::740625777523:role/github-actions-for-promotional-use-only-deploy
+          aws-region: us-east-1
+
+      - name: Deploy app bucket and invalidate CloudFront
+        run: SKIP_BUILD=1 bash scripts/deploy.sh
+
+      - name: Production HTTP smoke
+        run: python3 scripts/prod_smoke.py
