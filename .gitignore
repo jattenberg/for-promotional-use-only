@@ -118,6 +118,14 @@ celerybeat-schedule
 # dotenv
 .env
 
+# Phase 3 event-logging local build + secrets
+infra/phase3/.build/
+infra/phase3/.state/*
+!infra/phase3/.state/.gitignore
+
+# local scratch
+.local/
+
 # virtualenv
 .venv
 venv/

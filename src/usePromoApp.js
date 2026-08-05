@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { createSearchTracker, getEventLogger } from './events';
 import {
   buildNavigationOrder,
   letterForSongKey,
@@ -59,6 +60,10 @@ export function usePromoApp(routeLetter, navigate) {
   const catalogIndexPromise = useRef(null);
   const pendingPlayRef = useRef(pendingPlay);
   pendingPlayRef.current = pendingPlay;
+  const events = useRef(getEventLogger());
+  const trackSearch = useRef(
+    createSearchTracker((name, props, path) => events.current.track(name, props, path))
+  );
 
   useEffect(() => {
     localStorage.setItem(
@@ -66,6 +71,17 @@ export function usePromoApp(routeLetter, navigate) {
       JSON.stringify({ favorites, recentlyPlayed })
     );
   }, [favorites, recentlyPlayed]);
+
+  useEffect(() => {
+    if (!routeLetter) {
+      return;
+    }
+    events.current.track(
+      'page_view',
+      { letter: routeLetter },
+      '/' + letterToRoute(routeLetter)
+    );
+  }, [routeLetter]);
 
   const loadLetter = useCallback((letter) => {
     const generation = fetchGeneration.current + 1;
@@ -157,7 +173,13 @@ export function usePromoApp(routeLetter, navigate) {
 
   const toggleAddRemoveFavorites = useCallback((songPath) => {
     setFavorites((prev) => {
-      if (songPath in prev) {
+      const removing = songPath in prev;
+      events.current.track(
+        removing ? 'favorite_remove' : 'favorite_add',
+        { song_path: songPath },
+        typeof location !== 'undefined' ? location.pathname : '/'
+      );
+      if (removing) {
         return Object.keys(prev)
           .filter((path) => path !== songPath)
           .reduce((acc, path) => ({ ...acc, [path]: prev[path] }), {});
@@ -407,7 +429,12 @@ export function usePromoApp(routeLetter, navigate) {
   }, [searchIndex, searchIndexError]);
 
   const handleSearchChange = useCallback((event) => {
-    setSearchQuery(event.target.value);
+    const value = event.target.value;
+    setSearchQuery(value);
+    trackSearch.current(
+      value,
+      typeof location !== 'undefined' ? location.pathname : '/'
+    );
   }, []);
 
   const jumpToLetter = useCallback(

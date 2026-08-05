@@ -36,12 +36,18 @@ npm test        # vitest
 
 Production: CloudFront + app bucket. See `infra/phase1/README.md` and `infra/phase2/README.md`.
 
+Product event logging (optional Phase 3): `infra/phase3/README.md` — same-origin
+`POST /events` → Lambda → S3 → daily Parquet → DuckDB (`scripts/query_events.py`).
+
 ```bash
 uv run python -m promo_catalog.generate_json   # when catalog changed
 bash build_python.sh
 npm run build
 bash scripts/deploy.sh
 ```
+
+For production builds that emit events, set `VITE_PROMO_EVENTS_KEY` (and optionally
+`VITE_PROMO_EVENTS_URL=/events`) in the environment before `npm run build`.
 
 Never sync or delete against the media bucket root — `mixtape/` is ~243 GiB.
 
