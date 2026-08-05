@@ -18,8 +18,8 @@ function Header() {
         <div className="social-media">
           <ul>
             <li>
-              <a href="mailto:josh@attenberg.org">
-                <i className="far fa-envelope" />
+              <a href="mailto:josh@attenberg.org" aria-label="Email josh@attenberg.org">
+                <i className="far fa-envelope" aria-hidden="true" />
               </a>
             </li>
           </ul>
