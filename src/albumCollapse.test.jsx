@@ -1,12 +1,11 @@
-import React from 'react';
-import ReactDOM from 'react-dom';
-import { act } from 'react-dom/test-utils';
+import { render, fireEvent, act } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import Songs from './Songs';
+import { parseLetterPayload } from './songUtils';
 
-jest.mock('react-responsive-audio-player', () => {
-  const React = require('react');
-  return () => React.createElement('div', { 'data-mock-player': 'true' });
-});
+vi.mock('react-responsive-audio-player', () => ({
+  default: () => <div data-mock-player="true" />,
+}));
 
 const album = {
   id: 'CoverCDs/Knowledge Magazine 33 Phuturistic Bluez',
@@ -20,76 +19,61 @@ const album = {
 const orphan = 'mixtape/kinetic_energy.mp3';
 
 describe('Songs album collapse', () => {
-  let container;
-
-  beforeEach(() => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-  });
-
-  afterEach(() => {
-    ReactDOM.unmountComponentAtNode(container);
-    container.remove();
-  });
-
   const renderSongs = (props = {}) => {
-    act(() => {
-      ReactDOM.render(
-        <Songs
-          songList={[...album.tracks, orphan]}
-          albums={[album]}
-          favorites={{}}
-          currentlyPlayingPath={null}
-          onSelectTrack={props.onSelectTrack || jest.fn()}
-          toggleAddRemoveFavorites={jest.fn()}
-        />,
-        container
-      );
-    });
+    return render(
+      <Songs
+        songList={[...album.tracks, orphan]}
+        albums={[album]}
+        favorites={{}}
+        currentlyPlayingPath={null}
+        onSelectTrack={props.onSelectTrack || vi.fn()}
+        toggleAddRemoveFavorites={vi.fn()}
+      />
+    );
   };
 
   it('expands an album without starting playback', () => {
-    const onSelectTrack = jest.fn();
-    renderSongs({ onSelectTrack });
+    const onSelectTrack = vi.fn();
+    const { container } = renderSongs({ onSelectTrack });
 
     const albumRow = container.querySelector('.single-song-wrapper--album');
     expect(albumRow).not.toBeNull();
     expect(container.querySelector('.songlist--album-tracks')).toBeNull();
 
     act(() => {
-      albumRow.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      fireEvent.click(albumRow);
     });
 
-    const nestedTracks = container.querySelectorAll('.songlist--album-tracks .single-song-wrapper--nested');
+    const nestedTracks = container.querySelectorAll(
+      '.songlist--album-tracks .single-song-wrapper--nested'
+    );
     expect(nestedTracks.length).toBe(album.tracks.length);
     expect(onSelectTrack).not.toHaveBeenCalled();
   });
 
   it('plays a child track after expand then play', () => {
-    const onSelectTrack = jest.fn();
-    renderSongs({ onSelectTrack });
+    const onSelectTrack = vi.fn();
+    const { container } = renderSongs({ onSelectTrack });
 
     act(() => {
-      container
-        .querySelector('.single-song-wrapper--album')
-        .dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      fireEvent.click(container.querySelector('.single-song-wrapper--album'));
     });
 
     const childRow = container.querySelector('.single-song-wrapper--nested');
     act(() => {
-      childRow.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      fireEvent.click(childRow);
     });
 
     const playButton = container.querySelector('.songlist--album-tracks .song-play-control');
     act(() => {
-      playButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      fireEvent.click(playButton);
     });
 
     expect(onSelectTrack).toHaveBeenCalledWith(album.tracks[0]);
   });
 
   it('still renders orphan tracks outside albums', () => {
-    renderSongs();
+    const { container } = renderSongs();
     expect(container.textContent).toMatch(/Kinetic Energy/);
     expect(
       container.querySelectorAll('.single-song-wrapper:not(.single-song-wrapper--album)').length
@@ -98,8 +82,6 @@ describe('Songs album collapse', () => {
 });
 
 describe('parseLetterPayload', () => {
-  const { parseLetterPayload } = require('./songUtils');
-
   it('accepts legacy flat arrays', () => {
     expect(parseLetterPayload(['mixtape/a.mp3'])).toEqual({
       tracks: ['mixtape/a.mp3'],

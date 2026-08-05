@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 AWS_PROFILE="${AWS_PROFILE:-personal}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
@@ -18,7 +18,7 @@ if [[ "${SKIP_BUILD:-}" != "1" ]]; then
 fi
 
 echo "==> Syncing to s3://${APP_BUCKET}/ (--delete; mixtape/ never in build/)"
-aws s3 sync build/ "s3://${APP_BUCKET}/" \
+aws s3 sync dist/ "s3://${APP_BUCKET}/" \
   --profile "${AWS_PROFILE}" \
   --region "${AWS_REGION}" \
   --delete

@@ -5,7 +5,7 @@ import sys
 import boto3
 import orjson
 
-from .catalog import (
+from promo_catalog.catalog import (
     LETTERS,
     build_letter_payloads,
     build_lists,

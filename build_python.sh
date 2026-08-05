@@ -1,18 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-venv="for-promotional-use-only-virtualenv"
-
-echo "building virtualenv: $venv"
-
-hash virtualenv
-if [ "$?" != "0" ];
-  then
-    pip install virtualenv;
-fi
-
-virtualenv $venv
-
-echo "installing for-promotional-use-only"
-$venv/bin/pip install -e .
-
-
+uv sync
+uv run python -m promo_catalog.generate_json

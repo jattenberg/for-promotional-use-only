@@ -16,7 +16,7 @@ echo "==> Building app"
 npm run build
 
 echo "==> Syncing app objects to s3://${BUCKET} (excluding mixtape/)"
-aws s3 sync build/ "s3://${BUCKET}/" \
+aws s3 sync dist/ "s3://${BUCKET}/" \
   --profile "${AWS_PROFILE}" \
   --region "${AWS_REGION}" \
   --exclude "mixtape/*"
