@@ -1,0 +1,25 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PromoAppDeploy",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket",
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::for-promotional-use-only-app",
+        "arn:aws:s3:::for-promotional-use-only-app/*"
+      ]
+    },
+    {
+      "Sid": "PromoInvalidate",
+      "Effect": "Allow",
+      "Action": "cloudfront:CreateInvalidation",
+      "Resource": "arn:aws:cloudfront::740625777523:distribution/E3N3G42L4RB0UV"
+    }
+  ]
+}
