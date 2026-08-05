@@ -4,14 +4,19 @@ import { letterToRoute } from './songUtils';
 const alphabetConst = 'abcdefghijklmnopqrstuvwxyz'.toUpperCase().split('');
 
 export default function AlphabetMenu({ activeLetter }) {
-  const activeLetterClass = (letter) =>
-    activeLetter === letter ? 'active-letter' : '';
-
   const createLetter = (letter, label = letter) => {
     const isActive = activeLetter === letter;
+    const className = [
+      'alphabet-letter',
+      isActive ? 'active-letter' : '',
+    ]
+      .filter(Boolean)
+      .join(' ');
+
     return (
-      <li key={letter} className={activeLetterClass(letter)}>
+      <li key={letter}>
         <Link
+          className={className}
           to={'/' + letterToRoute(letter)}
           aria-current={isActive ? 'page' : undefined}
           aria-label={letter === 'NUM' ? 'Numbers and symbols' : undefined}

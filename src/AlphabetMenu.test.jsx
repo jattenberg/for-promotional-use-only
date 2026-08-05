@@ -70,4 +70,12 @@ describe('AlphabetMenu accessibility', () => {
     expect(screen.getByTestId('path').textContent).toBe('/num');
     expect(num.getAttribute('aria-current')).toBe('page');
   });
+
+  it('puts the letter cell class on the link so padding stays in the hit target', () => {
+    renderAlphabet('/k');
+
+    const letterA = screen.getByRole('link', { name: 'A' });
+    expect(letterA.className).toContain('alphabet-letter');
+    expect(letterA.parentElement.className).not.toContain('alphabet-letter');
+  });
 });
