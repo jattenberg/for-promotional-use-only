@@ -26,6 +26,13 @@ npm run build
 ```
 
 After CloudFront is live, deploy **app objects only** (never `mixtape/`):
+
+```bash
+bash scripts/deploy.sh
+```
+
+Phase 1 cutover helper (syncs to media bucket — superseded after Phase 2 app split):
+
 ```
 bash infra/phase1/deploy-app.sh
 ```
