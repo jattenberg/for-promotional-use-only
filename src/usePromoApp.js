@@ -52,9 +52,11 @@ export function usePromoApp(routeLetter, navigate) {
   const [searchIndex, setSearchIndex] = useState(null);
   const [searchIndexError, setSearchIndexError] = useState(null);
   const [searchIndexLoading, setSearchIndexLoading] = useState(false);
+  const [catalogPaths, setCatalogPaths] = useState([]);
 
   const fetchGeneration = useRef(0);
   const searchIndexPromise = useRef(null);
+  const catalogIndexPromise = useRef(null);
   const pendingPlayRef = useRef(pendingPlay);
   pendingPlayRef.current = pendingPlay;
 
@@ -114,6 +116,34 @@ export function usePromoApp(routeLetter, navigate) {
         setError(err.message || 'Failed to load songs');
       });
   }, []);
+
+  const ensureCatalogPaths = useCallback(() => {
+    if (catalogPaths.length) {
+      return Promise.resolve(catalogPaths);
+    }
+    if (catalogIndexPromise.current) {
+      return catalogIndexPromise.current;
+    }
+    catalogIndexPromise.current = fetch(`${assetBase}json/index.json`)
+      .then((response) => (response.ok ? response.json() : []))
+      .then((index) => {
+        if (!Array.isArray(index)) {
+          return [];
+        }
+        const paths = index.map((entry) => entry.path).filter(Boolean);
+        setCatalogPaths(paths);
+        return paths;
+      })
+      .catch(() => [])
+      .finally(() => {
+        catalogIndexPromise.current = null;
+      });
+    return catalogIndexPromise.current;
+  }, [catalogPaths]);
+
+  useEffect(() => {
+    ensureCatalogPaths();
+  }, [ensureCatalogPaths]);
 
   useEffect(() => {
     if (routeLetter) {
@@ -292,22 +322,61 @@ export function usePromoApp(routeLetter, navigate) {
 
   const playAdjacentTrack = useCallback(
     (offset) => {
-      const sorted = navigationSongList();
-      if (!sorted.length) {
+      const letterOrder = navigationSongList();
+      if (!letterOrder.length && offset > 0 && !currentlyPlayingPath) {
         clearPlayback();
         return;
       }
-      const index = currentlyPlayingPath ? sorted.indexOf(currentlyPlayingPath) : -1;
-      const nextIndex = index === -1 && offset > 0 ? 0 : index + offset;
-      const nextPath = sorted[nextIndex];
-      if (nextPath) {
-        setCurrentlyPlayingPath(nextPath);
+
+      if (!currentlyPlayingPath && offset > 0) {
+        setCurrentlyPlayingPath(letterOrder[0]);
         setSeekToSeconds(0);
         return;
       }
+
+      if (!currentlyPlayingPath) {
+        return;
+      }
+
+      const letterIndex = letterOrder.indexOf(currentlyPlayingPath);
+
+      if (offset > 0) {
+        if (letterIndex >= 0 && letterIndex < letterOrder.length - 1) {
+          setCurrentlyPlayingPath(letterOrder[letterIndex + 1]);
+          setSeekToSeconds(0);
+          return;
+        }
+
+        ensureCatalogPaths().then((catalogOrder) => {
+          if (!catalogOrder.length) {
+            clearPlayback();
+            return;
+          }
+          const catalogIndex = catalogOrder.indexOf(currentlyPlayingPath);
+          if (catalogIndex >= 0 && catalogIndex < catalogOrder.length - 1) {
+            playMixtape(catalogOrder[catalogIndex + 1]);
+            return;
+          }
+          clearPlayback();
+        });
+        return;
+      }
+
+      if (letterIndex > 0) {
+        setCurrentlyPlayingPath(letterOrder[letterIndex - 1]);
+        setSeekToSeconds(0);
+        return;
+      }
+
       clearPlayback();
     },
-    [clearPlayback, currentlyPlayingPath, navigationSongList]
+    [
+      clearPlayback,
+      currentlyPlayingPath,
+      ensureCatalogPaths,
+      navigationSongList,
+      playMixtape,
+    ]
   );
 
   const playNextTrack = useCallback(() => playAdjacentTrack(1), [playAdjacentTrack]);

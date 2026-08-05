@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import AudioPlayer from 'react-responsive-audio-player';
 import { mediaUrl, prepareSongForDisplay } from './songUtils';
 
 const POSITION_FLUSH_MS = 2000;
+const AUTOPLAY_DELAY_MS = 500;
+
+const formatTime = (seconds) => {
+  if (!Number.isFinite(seconds) || seconds < 0) {
+    return '0:00';
+  }
+  const minutes = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${minutes}:${String(secs).padStart(2, '0')}`;
+};
 
 /**
- * Fixed bottom playback bar. Owns the audio element, seek application, and
+ * Fixed bottom playback bar. Owns a native audio element, seek application, and
  * position flushing for the currently loaded track.
  */
 export default function BottomPlaybackBar({
@@ -21,61 +30,22 @@ export default function BottomPlaybackBar({
 }) {
   const audioEl = useRef(null);
   const audioElPath = useRef(null);
-  const audioPlayerRef = useRef(null);
   const didSeek = useRef(false);
   const lastPosWrite = useRef(0);
   const seekListener = useRef(null);
+  const seekToSecondsRef = useRef(seekToSeconds);
+  const trySeekRef = useRef(null);
+  const flushFromElementRef = useRef(null);
+  seekToSecondsRef.current = seekToSeconds;
   const [isPlaying, setIsPlaying] = useState(false);
-
-  const handlePreviousClick = useCallback(() => {
-    if (onPrevious) {
-      onPrevious();
-    }
-  }, [onPrevious]);
-
-  const handleNextClick = useCallback(() => {
-    if (onNext) {
-      onNext();
-    }
-  }, [onNext]);
-
-  const detachSkipHandlers = useCallback(() => {
-    const node = audioPlayerRef.current;
-    if (!node) {
-      return;
-    }
-    const buttons = node.querySelectorAll('.skip_button');
-    if (buttons[0]) {
-      buttons[0].removeEventListener('click', handlePreviousClick);
-    }
-    if (buttons[1]) {
-      buttons[1].removeEventListener('click', handleNextClick);
-    }
-  }, [handleNextClick, handlePreviousClick]);
-
-  const attachSkipHandlers = useCallback(
-    (node) => {
-      detachSkipHandlers();
-      audioPlayerRef.current = node;
-      if (!node) {
-        return;
-      }
-      const buttons = node.querySelectorAll('.skip_button');
-      if (buttons[0]) {
-        buttons[0].addEventListener('click', handlePreviousClick);
-      }
-      if (buttons[1]) {
-        buttons[1].addEventListener('click', handleNextClick);
-      }
-    },
-    [detachSkipHandlers, handleNextClick, handlePreviousClick]
-  );
-
-  useEffect(() => () => detachSkipHandlers(), [detachSkipHandlers]);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
 
   useEffect(() => {
     didSeek.current = false;
     setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
   }, [currentPath]);
 
   const flushFromElement = useCallback(
@@ -101,19 +71,14 @@ export default function BottomPlaybackBar({
     },
     [currentPath, seekToSeconds, updatePlaybackPosition]
   );
-
-  const audioFromEvent = useCallback((event) => {
-    if (event && event.target) {
-      return event.target;
-    }
-    return audioEl.current;
-  }, []);
+  flushFromElementRef.current = flushFromElement;
 
   const flushPosition = useCallback(
     (event, { ended } = { ended: false }) => {
-      flushFromElement(audioFromEvent(event), { ended });
+      const audio = event?.target || audioEl.current;
+      flushFromElement(audio, { ended });
     },
-    [audioFromEvent, flushFromElement]
+    [flushFromElement]
   );
 
   const handlePlay = useCallback(() => {
@@ -133,6 +98,11 @@ export default function BottomPlaybackBar({
 
   const handleTimeUpdate = useCallback(
     (event) => {
+      const audio = event.target;
+      setCurrentTime(audio.currentTime);
+      if (Number.isFinite(audio.duration)) {
+        setDuration(audio.duration);
+      }
       const now = Date.now();
       if (lastPosWrite.current && now - lastPosWrite.current < POSITION_FLUSH_MS) {
         return;
@@ -142,6 +112,13 @@ export default function BottomPlaybackBar({
     },
     [flushPosition]
   );
+
+  const handleLoadedMetadata = useCallback((event) => {
+    const audio = event.target;
+    if (Number.isFinite(audio.duration)) {
+      setDuration(audio.duration);
+    }
+  }, []);
 
   const handleEnded = useCallback(
     (event) => {
@@ -166,13 +143,14 @@ export default function BottomPlaybackBar({
         if (audio.readyState < 1) {
           return;
         }
-        const duration = Number(audio.duration);
+        const audioDuration = Number(audio.duration);
         const capped =
-          Number.isFinite(duration) && duration > 0
-            ? Math.min(seekToSeconds, Math.max(duration - 0.25, 0))
+          Number.isFinite(audioDuration) && audioDuration > 0
+            ? Math.min(seekToSeconds, Math.max(audioDuration - 0.25, 0))
             : seekToSeconds;
         try {
           audio.currentTime = capped;
+          setCurrentTime(capped);
         } catch {
           return;
         }
@@ -204,32 +182,103 @@ export default function BottomPlaybackBar({
     },
     [onSeekApplied, seekToSeconds]
   );
-
-  const setAudioElementRef = useCallback(
-    (audio) => {
-      if (!audio && audioEl.current) {
-        flushFromElement(audioEl.current);
-        if (seekListener.current) {
-          audioEl.current.removeEventListener('loadedmetadata', seekListener.current);
-          audioEl.current.removeEventListener('canplay', seekListener.current);
-          seekListener.current = null;
-        }
-      }
-      audioEl.current = audio;
-      if (audio) {
-        audioElPath.current = currentPath;
-        didSeek.current = false;
-        trySeek(audio);
-      }
-    },
-    [currentPath, flushFromElement, trySeek]
-  );
+  trySeekRef.current = trySeek;
 
   useEffect(() => {
-    if (seekToSeconds > 0 && !didSeek.current && audioEl.current) {
-      trySeek(audioEl.current);
+    const audio = audioEl.current;
+    if (!audio) {
+      return undefined;
     }
-  }, [seekToSeconds, trySeek]);
+
+    if (audioElPath.current && audioElPath.current !== currentPath) {
+      flushFromElementRef.current?.(audio);
+    }
+
+    if (!currentPath) {
+      audio.removeAttribute('src');
+      audio.load();
+      audioElPath.current = null;
+      return undefined;
+    }
+
+    audioElPath.current = currentPath;
+    didSeek.current = false;
+    audio.src = mediaUrl(currentPath);
+    audio.load();
+
+    const clearSeekListeners = () => {
+      if (seekListener.current) {
+        audio.removeEventListener('loadedmetadata', seekListener.current);
+        audio.removeEventListener('canplay', seekListener.current);
+        seekListener.current = null;
+      }
+    };
+
+    const pendingSeek = seekToSecondsRef.current > 0;
+    if (pendingSeek) {
+      trySeekRef.current?.(audio);
+      return clearSeekListeners;
+    }
+
+    const timer = window.setTimeout(() => {
+      const playPromise = audio.play();
+      if (playPromise && typeof playPromise.catch === 'function') {
+        playPromise.catch(() => {});
+      }
+    }, AUTOPLAY_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(timer);
+      clearSeekListeners();
+    };
+  }, [currentPath]);
+
+  useEffect(() => {
+    const audio = audioEl.current;
+    if (
+      !audio ||
+      !currentPath ||
+      audioElPath.current !== currentPath ||
+      seekToSeconds <= 0 ||
+      didSeek.current
+    ) {
+      return;
+    }
+    trySeekRef.current?.(audio);
+  }, [seekToSeconds, currentPath]);
+
+  useEffect(() => {
+    const audio = audioEl.current;
+    return () => {
+      if (audio && audioElPath.current) {
+        flushFromElementRef.current?.(audio);
+      }
+    };
+  }, [currentPath]);
+
+  const togglePlayPause = useCallback(() => {
+    const audio = audioEl.current;
+    if (!audio) {
+      return;
+    }
+    if (audio.paused) {
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+    }
+  }, []);
+
+  const handleProgressClick = useCallback((event) => {
+    const audio = audioEl.current;
+    if (!audio || !Number.isFinite(audio.duration) || audio.duration <= 0) {
+      return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = (event.clientX - rect.left) / rect.width;
+    const nextTime = Math.max(0, Math.min(audio.duration, ratio * audio.duration));
+    audio.currentTime = nextTime;
+    setCurrentTime(nextTime);
+  }, []);
 
   const favoriteClassName = (songPath) => {
     if (favorites && Object.prototype.hasOwnProperty.call(favorites, songPath)) {
@@ -254,9 +303,9 @@ export default function BottomPlaybackBar({
   }
 
   const songTitle = prepareSongForDisplay(currentPath);
-  const songSrc = mediaUrl(currentPath);
-  const playlist = [{ url: songSrc, title: songTitle }];
-  const resuming = seekToSeconds > 0;
+  const progressPct =
+    duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
+  const isPaused = !isPlaying;
 
   return (
     <div className="bottom-playback-bar" role="region" aria-label="Now playing">
@@ -289,27 +338,101 @@ export default function BottomPlaybackBar({
               }
             }}
           />
-          <a href={songSrc} aria-label="Download track">
+          <a href={mediaUrl(currentPath)} aria-label="Download track">
             <i className="download fas fa-download" />
           </a>
         </div>
       </div>
       <div className="bottom-playback-bar__player">
-        <AudioPlayer
-          key={currentPath}
-          autoplay
-          autoplayDelayInSeconds={resuming ? 0 : 0.5}
-          ref={attachSkipHandlers}
-          audioElementRef={setAudioElementRef}
-          cycle={false}
-          playlist={playlist}
-          onMediaEvent={{
-            play: handlePlay,
-            timeupdate: handleTimeUpdate,
-            pause: handlePause,
-            ended: handleEnded,
-          }}
-        />
+        <div className="audio_player">
+          <div
+            className="skip_button back audio_button"
+            role="button"
+            aria-label="Previous track"
+            tabIndex={0}
+            onClick={() => onPrevious && onPrevious()}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                if (onPrevious) {
+                  onPrevious();
+                }
+              }
+            }}
+          >
+            <div className="skip_button_inner">
+              <div className="right_facing_triangle" />
+            </div>
+          </div>
+          <div
+            className={
+              'play_pause_button audio_button' + (isPaused ? ' paused' : '')
+            }
+            role="button"
+            aria-label={isPaused ? 'Play' : 'Pause'}
+            tabIndex={0}
+            onClick={togglePlayPause}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                togglePlayPause();
+              }
+            }}
+          >
+            <div className="play_pause_inner">
+              <div className="left" />
+              <div className="triangle_1" />
+              <div className="triangle_2" />
+              <div className="right" />
+            </div>
+          </div>
+          <div
+            className="skip_button audio_button"
+            role="button"
+            aria-label="Next track"
+            tabIndex={0}
+            onClick={() => onNext && onNext()}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                if (onNext) {
+                  onNext();
+                }
+              }
+            }}
+          >
+            <div className="skip_button_inner">
+              <div className="right_facing_triangle" />
+            </div>
+          </div>
+          <div className="spacer" />
+          <div
+            className="audio_progress_container"
+            role="slider"
+            aria-label="Seek"
+            tabIndex={0}
+            onClick={handleProgressClick}
+          >
+            <div className="audio_progress" style={{ width: `${progressPct}%` }} />
+            <div className="audio_progress_overlay">
+              <div className="audio_info_marquee">
+                <p className="audio_info">{songTitle}</p>
+              </div>
+              <div className="audio_time_progress">
+                {formatTime(currentTime)} / {formatTime(duration)}
+              </div>
+            </div>
+          </div>
+          <audio
+            ref={audioEl}
+            preload="metadata"
+            onPlay={handlePlay}
+            onPause={handlePause}
+            onTimeUpdate={handleTimeUpdate}
+            onLoadedMetadata={handleLoadedMetadata}
+            onEnded={handleEnded}
+          />
+        </div>
       </div>
     </div>
   );

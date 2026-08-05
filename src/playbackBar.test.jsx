@@ -4,80 +4,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import BottomPlaybackBar from './BottomPlaybackBar';
 import Songs from './Songs';
 
-vi.mock('react-responsive-audio-player', () => {
-  const React = require('react');
+const getAudio = () => document.querySelector('audio');
 
-  const MockAudioPlayer = React.forwardRef((props, ref) => {
-    const rootRef = React.useRef(null);
-
-    React.useEffect(() => {
-      if (props.audioElementRef) {
-        const audio = {
-          currentTime: 0,
-          duration: 120,
-          readyState: 4,
-          play: () => Promise.resolve(),
-          pause: () => {},
-          addEventListener: () => {},
-          removeEventListener: () => {},
-        };
-        props.audioElementRef(audio);
-        globalThis.__promoTestAudio = audio;
-      }
-      return () => {
-        if (props.audioElementRef) {
-          props.audioElementRef(null);
-        }
-      };
-    }, [props.audioElementRef]);
-
-    const setRootRef = (node) => {
-      rootRef.current = node;
-      if (typeof ref === 'function') {
-        ref(node);
-      } else if (ref) {
-        ref.current = node;
-      }
-    };
-
-    const title =
-      props.playlist && props.playlist[0] && props.playlist[0].title;
-    const onPlay = props.onMediaEvent && props.onMediaEvent.play;
-
-    return React.createElement(
-      'div',
-      {
-        ref: setRootRef,
-        className: 'audio_player',
-        'data-mock-player': 'true',
-      },
-      React.createElement('button', {
-        type: 'button',
-        'data-mock-play': 'true',
-        onClick: () => onPlay && onPlay(),
-      }),
-      React.createElement('div', {
-        className: 'skip_button',
-        'data-skip': 'previous',
-        onClick: () => {},
-      }),
-      React.createElement('div', {
-        className: 'skip_button',
-        'data-skip': 'next',
-        onClick: () => {},
-      }),
-      React.createElement('div', {
-        className: 'play_pause_button',
-        'data-title': title || '',
-      }),
-      React.createElement('div', { className: 'audio_progress_container' })
-    );
-  });
-
-  MockAudioPlayer.displayName = 'MockAudioPlayer';
-
-  return { default: MockAudioPlayer };
-});
+const primeAudioForSeek = (audio, { duration = 120 } = {}) => {
+  if (!audio) {
+    return;
+  }
+  Object.defineProperty(audio, 'readyState', { value: 4, configurable: true });
+  Object.defineProperty(audio, 'duration', { value: duration, configurable: true });
+  audio.dispatchEvent(new Event('loadedmetadata'));
+  audio.dispatchEvent(new Event('canplay'));
+};
 
 const songA = 'mixtape/alpha_track.mp3';
 const songB = 'mixtape/bravo_track.mp3';
@@ -197,7 +134,7 @@ describe('bottom playback bar integration', () => {
     renderHarness();
     expect(container.querySelector('.bottom-playback-bar--idle')).not.toBeNull();
     expect(container.textContent).toMatch(/No track selected/);
-    expect(container.querySelector('[data-mock-player]')).toBeNull();
+    expect(container.querySelector('.audio_player')).toBeNull();
   });
 
   const expandRow = (index) => {
@@ -222,7 +159,7 @@ describe('bottom playback bar integration', () => {
     expect(row.querySelector('.song-play-control')).not.toBeNull();
     expect(row.querySelector('.favorite-download--row')).not.toBeNull();
     expect(container.querySelector('.bottom-playback-bar--idle')).not.toBeNull();
-    expect(container.querySelector('[data-mock-player]')).toBeNull();
+    expect(container.querySelector('.audio_player')).toBeNull();
   });
 
   it('loads a track only after the expanded play control is clicked', () => {
@@ -230,7 +167,7 @@ describe('bottom playback bar integration', () => {
     const row = expandRow(0);
     playExpandedRow(row);
     expect(container.querySelector('.bottom-playback-bar--idle')).toBeNull();
-    expect(container.querySelector('[data-mock-player]')).not.toBeNull();
+    expect(container.querySelector('.audio_player')).not.toBeNull();
     expect(container.querySelector('.bottom-playback-bar__title').textContent).toBe(
       'Alpha Track'
     );
@@ -245,7 +182,7 @@ describe('bottom playback bar integration', () => {
     const active = container.querySelector('.single-song-wrapper.active');
     expect(active).not.toBeNull();
     expect(active.querySelector('.song-play-indicator')).not.toBeNull();
-    expect(active.querySelector('[data-mock-player]')).toBeNull();
+    expect(active.querySelector('.audio_player')).toBeNull();
     expect(active.querySelector('.audio_progress_container')).toBeNull();
     expect(active.querySelector('.skip_button')).toBeNull();
   });
@@ -259,7 +196,7 @@ describe('bottom playback bar integration', () => {
       harness.selectTrack(songA);
     });
     expect(harness.state.currentlyPlayingPath).toBe(songA);
-    expect(container.querySelector('[data-mock-player]')).not.toBeNull();
+    expect(container.querySelector('.audio_player')).not.toBeNull();
   });
 
   it('advances previous/next through the sorted playlist and clears at ends', () => {
@@ -323,7 +260,7 @@ describe('bottom playback bar integration', () => {
     });
     expect(harness.state.favorites[songA]).toBeTruthy();
     expect(harness.state.currentlyPlayingPath).toBeNull();
-    expect(container.querySelector('[data-mock-player]')).toBeNull();
+    expect(container.querySelector('.audio_player')).toBeNull();
   });
 
   it('applies resume seek and notifies onSeekApplied', () => {
@@ -334,7 +271,11 @@ describe('bottom playback bar integration', () => {
         seekToSeconds: 42,
       });
     });
+    act(() => {
+      primeAudioForSeek(getAudio());
+    });
     expect(harness.state.seekToSeconds).toBe(0);
+    expect(getAudio()?.currentTime).toBe(42);
   });
 
   it('flushes playback position from media pause events', () => {
@@ -346,7 +287,7 @@ describe('bottom playback bar integration', () => {
     // Reach into the mounted BottomPlaybackBar via harness children is awkward;
     // fire through the player props by finding the MockAudioPlayer instance
     // via a synthetic pause on the audio element stored by BottomPlaybackBar.
-    const playerHost = bar.querySelector('[data-mock-player]');
+    const playerHost = bar.querySelector('.audio_player');
     expect(playerHost).not.toBeNull();
 
     // BottomPlaybackBar wires pause → flushPosition; invoke via React tree:
@@ -362,8 +303,6 @@ describe('bottom playback bar integration', () => {
 });
 
 describe('BottomPlaybackBar callbacks', () => {
-  const getAudio = () => globalThis.__promoTestAudio;
-
   const renderBar = (currentPath, props = {}) => {
     return render(
       <BottomPlaybackBar
@@ -384,7 +323,7 @@ describe('BottomPlaybackBar callbacks', () => {
     const recordPlayed = vi.fn();
     renderBar(songA, { recordPlayed });
     act(() => {
-      document.querySelector('[data-mock-play]')?.click();
+      getAudio()?.dispatchEvent(new Event('play', { bubbles: true }));
     });
     expect(recordPlayed).toHaveBeenCalledWith(songA);
   });
@@ -397,8 +336,10 @@ describe('BottomPlaybackBar callbacks', () => {
       unmountFirst = view.unmount;
     });
     act(() => {
-      if (getAudio()) {
-        getAudio().currentTime = 47;
+      const audio = getAudio();
+      if (audio) {
+        Object.defineProperty(audio, 'duration', { value: 120, configurable: true });
+        audio.currentTime = 47;
       }
     });
     act(() => {
@@ -423,8 +364,10 @@ describe('BottomPlaybackBar callbacks', () => {
       unmountFirst = view.unmount;
     });
     act(() => {
-      if (getAudio()) {
-        getAudio().currentTime = 47;
+      const audio = getAudio();
+      if (audio) {
+        Object.defineProperty(audio, 'duration', { value: 120, configurable: true });
+        audio.currentTime = 47;
       }
     });
     act(() => {
@@ -438,8 +381,28 @@ describe('BottomPlaybackBar callbacks', () => {
 
   it('seeks to the resume offset then clears via onSeekApplied', () => {
     const onSeekApplied = vi.fn();
-    renderBar(songA, { seekToSeconds: 33, onSeekApplied });
+    const barProps = {
+      seekToSeconds: 33,
+      onSeekApplied,
+      favorites: {},
+      toggleAddRemoveFavorites: vi.fn(),
+      recordPlayed: vi.fn(),
+      updatePlaybackPosition: vi.fn(),
+      onNext: vi.fn(),
+      onPrevious: vi.fn(),
+    };
+    const view = render(<BottomPlaybackBar currentPath={songA} {...barProps} />);
+    act(() => {
+      primeAudioForSeek(getAudio());
+    });
     expect(onSeekApplied).toHaveBeenCalled();
+    expect(getAudio()?.currentTime).toBe(33);
+    const srcAfterSeek = getAudio()?.src;
+
+    act(() => {
+      view.rerender(<BottomPlaybackBar currentPath={songA} {...barProps} seekToSeconds={0} />);
+    });
+    expect(getAudio()?.src).toBe(srcAfterSeek);
     expect(getAudio()?.currentTime).toBe(33);
   });
 });
