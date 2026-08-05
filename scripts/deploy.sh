@@ -5,14 +5,18 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-AWS_PROFILE="${AWS_PROFILE-personal}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 APP_BUCKET="${APP_BUCKET:-for-promotional-use-only-app}"
 DISTRIBUTION_ID="${DISTRIBUTION_ID:-E3N3G42L4RB0UV}"
 
 PROFILE_ARGS=()
-if [[ -n "${AWS_PROFILE}" ]]; then
+if [[ -n "${AWS_ACCESS_KEY_ID:-}" ]]; then
+  # OIDC / env creds (e.g. GitHub Actions): never pass --profile; unset empty AWS_PROFILE.
+  unset AWS_PROFILE
+elif [[ -n "${AWS_PROFILE:-}" ]]; then
   PROFILE_ARGS=(--profile "${AWS_PROFILE}")
+else
+  PROFILE_ARGS=(--profile personal)
 fi
 
 cd "${REPO_ROOT}"

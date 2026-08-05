@@ -55,7 +55,6 @@ jobs:
       AWS_REGION: us-east-1
       APP_BUCKET: for-promotional-use-only-app
       DISTRIBUTION_ID: E3N3G42L4RB0UV
-      AWS_PROFILE: ""
     steps:
       - name: Checkout
         uses: actions/checkout@v4
