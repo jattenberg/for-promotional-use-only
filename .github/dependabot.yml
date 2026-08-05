@@ -1,0 +1,44 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    # Keep majors intentional — Dependabot security updates can still open separate PRs.
+    ignore:
+      - dependency-name: vite
+        update-types: ["version-update:semver-major"]
+      - dependency-name: vitest
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react-dom
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react-router
+        update-types: ["version-update:semver-major"]
+      - dependency-name: react-router-dom
+        update-types: ["version-update:semver-major"]
+    groups:
+      npm-dev-patch-minor:
+        dependency-type: development
+        update-types:
+          - patch
+          - minor
+      npm-prod-patch-minor:
+        dependency-type: production
+        update-types:
+          - patch
+          - minor
+
+  - package-ecosystem: pip
+    directory: /infra/phase3/lambda/compact
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+    labels:
+      - dependencies

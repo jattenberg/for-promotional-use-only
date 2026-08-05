@@ -65,8 +65,12 @@ bash infra/phase2/setup-github-actions-oidc.sh
 
 ```bash
 python3 scripts/prod_smoke.py
-node scripts/prod_ui_smoke.mjs
+npm run smoke:ui
+npm run smoke:cross-letter
 ```
+
+Playwright UI smokes need a Chromium install once: `npx playwright install chromium`.
+On merges to `master`, CI runs both UI smokes against production after deploy.
 
 ## Add media
 

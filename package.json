@@ -8,7 +8,9 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "smoke:ui": "node scripts/prod_ui_smoke.mjs",
+    "smoke:cross-letter": "node scripts/cross_letter_next_smoke.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
