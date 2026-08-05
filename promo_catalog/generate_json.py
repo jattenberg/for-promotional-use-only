@@ -12,6 +12,7 @@ from promo_catalog.catalog import (
     detect_albums,
     is_audio_key,
     letter_for_key,
+    write_sitemap,
 )
 
 BUCKET = "for-promotional-use-only.com"
@@ -68,11 +69,13 @@ def main():
         pretty_print_json(OUT_DIR, "%ssongs.json" % letter, payload)
 
     pretty_print_json(OUT_DIR, "index.json", index)
+    sitemap_path = write_sitemap()
     logging.info(
-        "wrote %d letter files and index.json (%d entries, %d albums)",
+        "wrote %d letter files and index.json (%d entries, %d albums); wrote %s",
         len(payloads),
         len(index),
         sum(len(payload["albums"]) for payload in payloads.values()),
+        sitemap_path,
     )
 
 

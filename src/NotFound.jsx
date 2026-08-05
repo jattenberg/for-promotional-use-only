@@ -1,9 +1,14 @@
-import React from 'react';
+import { useEffect } from 'react';
+import { NOT_FOUND_DOCUMENT_TITLE } from './documentTitle';
 
-const NotFound = () => (
-  <div className="container">
-    <h2>not found, sorry.</h2>
-  </div>
-)
+export default function NotFound() {
+  useEffect(() => {
+    document.title = NOT_FOUND_DOCUMENT_TITLE;
+  }, []);
 
-export default NotFound;
+  return (
+    <div className="container">
+      <h2>not found, sorry.</h2>
+    </div>
+  );
+}

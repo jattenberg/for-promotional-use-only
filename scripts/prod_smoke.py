@@ -283,6 +283,28 @@ def main() -> int:
         )
     )
 
+    robots_status, robots_body = fetch("/robots.txt")
+    robots_text = robots_body.decode("utf-8", "replace")
+    results.append(
+        (
+            "robots.txt",
+            robots_status,
+            "sitemap directive",
+            robots_status == 200 and "Sitemap:" in robots_text,
+        )
+    )
+
+    sitemap_status, sitemap_body = fetch("/sitemap.xml")
+    sitemap_text = sitemap_body.decode("utf-8", "replace")
+    results.append(
+        (
+            "sitemap.xml",
+            sitemap_status,
+            "has /k loc",
+            sitemap_status == 200 and f"{BASE}/k" in sitemap_text,
+        )
+    )
+
     print(f"SMOKE RESULTS ({BASE})")
     for name, status, detail, ok in results:
         print(f"{'PASS' if ok else 'FAIL'} | {name} | HTTP {status} | {detail}")

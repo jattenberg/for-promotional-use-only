@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import ScrollToTop from 'react-scroll-up';
 import AlphabetMenu from './AlphabetMenu';
 import BottomPlaybackBar from './BottomPlaybackBar';
 import Drawer from './Drawer';
+import { promoDocumentTitle } from './documentTitle';
 import NotFound from './NotFound';
 import Songs from './Songs';
 import { letterFromRoute } from './songUtils';
@@ -34,6 +36,13 @@ export default function App() {
   const routeLetter = letterFromRoute(letter);
   const navigate = useNavigate();
   const app = usePromoApp(routeLetter, navigate);
+
+  useEffect(() => {
+    if (!routeLetter) {
+      return;
+    }
+    document.title = promoDocumentTitle(app.activeLetter, app.searchQuery);
+  }, [routeLetter, app.activeLetter, app.searchQuery]);
 
   if (!routeLetter) {
     return <NotFound />;
