@@ -46,6 +46,9 @@ jobs:
       - name: Run ingest Lambda unit tests
         run: uv run --with pytest python -m pytest tests/test_events_ingest.py -q
 
+      - name: Run DuckDB events helper tests
+        run: uv run --group dashboard --with pytest python -m pytest tests/test_events_duckdb.py -q
+
       - name: Build production bundle
         run: npm run build
         env:

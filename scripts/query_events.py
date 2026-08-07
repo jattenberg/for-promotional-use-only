@@ -34,30 +34,25 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        import duckdb
+        from promo_catalog.events_duckdb import connect_events
     except ImportError:
         print(
-            "duckdb is required: uv run --with duckdb python scripts/query_events.py ...",
+            "promo_catalog is required: run from repo root via uv run",
             file=sys.stderr,
         )
         return 1
 
     day = args.day or "*"
-    if args.local_dir:
-        glob_path = os.path.join(args.local_dir, f"dt={day}", "**", "*.parquet")
-        source = f"read_parquet('{glob_path}', hive_partitioning=true)"
-    else:
-        glob_path = f"s3://{args.bucket}/events/parquet/dt={day}/**/*.parquet"
-        source = f"read_parquet('{glob_path}', hive_partitioning=true)"
+    try:
+        con = connect_events(
+            bucket=args.bucket,
+            day=day,
+            local_dir=args.local_dir,
+        )
+    except ImportError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
 
-    con = duckdb.connect()
-    if not args.local_dir:
-        # Prefer credential chain (env / shared config / profile)
-        profile = os.environ.get("AWS_PROFILE", "personal")
-        con.execute("INSTALL httpfs; LOAD httpfs;")
-        con.execute(f"CALL load_aws_credentials('{profile}');")
-
-    con.execute(f"create or replace view events as select * from {source}")
     result = con.execute(args.sql).fetchdf()
     print(result.to_string(index=False))
     return 0
