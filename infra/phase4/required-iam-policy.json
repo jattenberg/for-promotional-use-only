@@ -1,0 +1,18 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PromoPhase4CloudFrontFunctions",
+      "Effect": "Allow",
+      "Action": [
+        "cloudfront:ListFunctions",
+        "cloudfront:CreateFunction",
+        "cloudfront:DescribeFunction",
+        "cloudfront:UpdateFunction",
+        "cloudfront:PublishFunction",
+        "cloudfront:TestFunction"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

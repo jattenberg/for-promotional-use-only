@@ -123,6 +123,13 @@ infra/phase3/.build/
 infra/phase3/.state/*
 !infra/phase3/.state/.gitignore
 
+# Phase 4 dashboard secrets + publish artifacts
+infra/phase4/.state/*
+!infra/phase4/.state/.gitignore
+
+# static dashboard build output
+/dist-dashboard/
+
 # local scratch
 .local/
 

@@ -49,6 +49,9 @@ jobs:
       - name: Run DuckDB events helper tests
         run: uv run --group dashboard --with pytest python -m pytest tests/test_events_duckdb.py -q
 
+      - name: Run static dashboard render tests
+        run: uv run --group dashboard --with pytest python -m pytest tests/test_render_dashboard_static.py -q
+
       - name: Build production bundle
         run: npm run build
         env:

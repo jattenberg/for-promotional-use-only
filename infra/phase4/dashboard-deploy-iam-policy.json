@@ -1,0 +1,46 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PromoDashboardEventsList",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::for-promotional-use-only-events",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": ["events/parquet/*", "dashboard-state/*"]
+        }
+      }
+    },
+    {
+      "Sid": "PromoDashboardEventsRead",
+      "Effect": "Allow",
+      "Action": "s3:GetObject",
+      "Resource": [
+        "arn:aws:s3:::for-promotional-use-only-events/events/parquet/*",
+        "arn:aws:s3:::for-promotional-use-only-events/dashboard-state/*"
+      ]
+    },
+    {
+      "Sid": "PromoDashboardStateWrite",
+      "Effect": "Allow",
+      "Action": "s3:PutObject",
+      "Resource": "arn:aws:s3:::for-promotional-use-only-events/dashboard-state/*"
+    },
+    {
+      "Sid": "PromoDashboardAppPrefix",
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+      "Resource": [
+        "arn:aws:s3:::for-promotional-use-only-app",
+        "arn:aws:s3:::for-promotional-use-only-app/dashboard/*"
+      ]
+    },
+    {
+      "Sid": "PromoDashboardInvalidate",
+      "Effect": "Allow",
+      "Action": "cloudfront:CreateInvalidation",
+      "Resource": "arn:aws:cloudfront::740625777523:distribution/E3N3G42L4RB0UV"
+    }
+  ]
+}

@@ -113,6 +113,8 @@ Submit **Load** after changing day/bucket/profile — queries do not run until t
 Parquet stores props as `props_json` (JSON string); the dashboard extracts
 `song_path` / `query` with `json_extract_string`.
 
+See `infra/phase4/README.md` for the nightly static HTML dashboard at `/dashboard/`.
+
 ## Exit criteria
 
 - `POST https://for-promotional-use-only.com/events` with valid key → 204 + raw NDJSON in bucket

@@ -1,0 +1,109 @@
+name: Nightly dashboard
+
+on:
+  schedule:
+    # ~45 min after promo-events-compact-daily (08:15 UTC)
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: dashboard-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  render-and-deploy:
+    name: Render static dashboard when new data exists
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: us-east-1
+      EVENTS_BUCKET: for-promotional-use-only-events
+      APP_BUCKET: for-promotional-use-only-app
+      DISTRIBUTION_ID: E3N3G42L4RB0UV
+      MARKER_KEY: dashboard-state/last-rendered-day.txt
+      PARQUET_PREFIX: events/parquet
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::740625777523:role/github-actions-for-promotional-use-only-dashboard
+          aws-region: us-east-1
+
+      - name: Gate on new parquet partition
+        id: gate
+        run: |
+          set -euo pipefail
+          YDAY="$(date -u -d 'yesterday' +%F)"
+          PARQUET_KEY="${PARQUET_PREFIX}/dt=${YDAY}/part-000.parquet"
+          echo "yesterday=${YDAY}" >> "${GITHUB_OUTPUT}"
+          echo "parquet_key=${PARQUET_KEY}" >> "${GITHUB_OUTPUT}"
+
+          if ! aws s3api head-object \
+            --bucket "${EVENTS_BUCKET}" \
+            --key "${PARQUET_KEY}" >/dev/null 2>&1; then
+            echo "No parquet for ${YDAY}; skipping render."
+            echo "should_render=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          LAST=""
+          if aws s3api head-object \
+            --bucket "${EVENTS_BUCKET}" \
+            --key "${MARKER_KEY}" >/dev/null 2>&1; then
+            LAST="$(aws s3 cp "s3://${EVENTS_BUCKET}/${MARKER_KEY}" -)"
+          fi
+          if [[ "${LAST}" == "${YDAY}" ]]; then
+            echo "Already rendered for ${YDAY}; skipping."
+            echo "should_render=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          echo "New data for ${YDAY}; will render."
+          echo "should_render=true" >> "${GITHUB_OUTPUT}"
+
+      - name: Sync Python environment
+        if: steps.gate.outputs.should_render == 'true'
+        run: uv sync --group dashboard
+
+      - name: Render static dashboard
+        if: steps.gate.outputs.should_render == 'true'
+        run: |
+          uv run --group dashboard python scripts/render_dashboard_static.py \
+            --day "${{ steps.gate.outputs.yesterday }}" \
+            --bucket "${EVENTS_BUCKET}" \
+            --output dist-dashboard/index.html
+
+      - name: Deploy dashboard prefix
+        if: steps.gate.outputs.should_render == 'true'
+        run: |
+          aws s3 sync dist-dashboard/ "s3://${APP_BUCKET}/dashboard/" \
+            --region "${AWS_REGION}" \
+            --delete \
+            --cache-control "public,max-age=300"
+
+      - name: Update last-rendered marker
+        if: steps.gate.outputs.should_render == 'true'
+        run: |
+          printf '%s' "${{ steps.gate.outputs.yesterday }}" | aws s3 cp - \
+            "s3://${EVENTS_BUCKET}/${MARKER_KEY}" \
+            --content-type text/plain
+
+      - name: Invalidate CloudFront dashboard paths
+        if: steps.gate.outputs.should_render == 'true'
+        run: |
+          INVALIDATION_ID="$(aws cloudfront create-invalidation \
+            --distribution-id "${DISTRIBUTION_ID}" \
+            --paths "/dashboard/*" \
+            --query 'Invalidation.Id' \
+            --output text)"
+          echo "Invalidation ${INVALIDATION_ID} submitted."
