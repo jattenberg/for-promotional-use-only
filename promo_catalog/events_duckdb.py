@@ -90,8 +90,9 @@ def connect_events(
     source = events_source_sql(glob_path)
     con = duckdb.connect()
     if not local_dir:
-        resolved_profile = profile or os.environ.get("AWS_PROFILE", DEFAULT_PROFILE)
         con.execute("INSTALL httpfs; LOAD httpfs;")
-        con.execute(f"CALL load_aws_credentials('{resolved_profile}');")
+        if not os.environ.get("AWS_ACCESS_KEY_ID"):
+            resolved_profile = profile or os.environ.get("AWS_PROFILE", DEFAULT_PROFILE)
+            con.execute(f"CALL load_aws_credentials('{resolved_profile}');")
     con.execute(f"create or replace view events as select * from {source}")
     return con

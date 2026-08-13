@@ -26,10 +26,11 @@ if [[ "${SKIP_BUILD:-}" != "1" ]]; then
   npm run build
 fi
 
-echo "==> Syncing to s3://${APP_BUCKET}/ (--delete; mixtape/ never in build/)"
+echo "==> Syncing to s3://${APP_BUCKET}/ (--delete; mixtape/ and dashboard/ never in build/)"
 aws s3 sync dist/ "s3://${APP_BUCKET}/" \
   "${PROFILE_ARGS[@]}" \
   --region "${AWS_REGION}" \
+  --exclude "dashboard/*" \
   --delete
 
 echo "==> Invalidating CloudFront /index.html, /assets/*, and /static/*"

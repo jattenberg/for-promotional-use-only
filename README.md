@@ -40,6 +40,10 @@ Product event logging (optional Phase 3): `infra/phase3/README.md` — same-orig
 `POST /events` → Lambda → S3 → daily Parquet → DuckDB (`scripts/query_events.py`,
 Marimo dashboard `scripts/events_dashboard.py`).
 
+Nightly static dashboard (Phase 4): `infra/phase4/README.md` — renders
+`scripts/render_dashboard_static.py` to `https://for-promotional-use-only.com/dashboard/`
+(Basic Auth gated) when new Parquet lands.
+
 ```bash
 uv run python -m promo_catalog.generate_json   # when catalog changed
 bash build_python.sh
