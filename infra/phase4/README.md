@@ -32,9 +32,14 @@ python3 infra/phase4/update-cloudfront-dashboard-origin.py
 ### CloudFront Functions API access
 
 If `aws cloudfront list-functions --profile personal` returns `AccessDenied`, attach
-`cloudfront:ListFunctions`, `cloudfront:CreateFunction`, `cloudfront:DescribeFunction`,
-`cloudfront:UpdateFunction`, and `cloudfront:PublishFunction` to the deploy user before
-running `setup-dashboard-basic-auth.sh`.
+the actions in `required-iam-policy.json` to the deploy user (merge into the existing
+`PromoPhase1CloudFront` inline policy on `admin`, or add a new inline policy). The
+`admin` user cannot call `iam:PutUserPolicy` on itself — an account administrator must
+apply the grant.
+
+Required actions: `cloudfront:ListFunctions`, `cloudfront:CreateFunction`,
+`cloudfront:DescribeFunction`, `cloudfront:UpdateFunction`, `cloudfront:PublishFunction`
+(and optionally `cloudfront:TestFunction` for dry-runs).
 
 Distribution updates (`update-cloudfront-dashboard-origin.py`) additionally need
 `cloudfront:GetDistribution`, `cloudfront:GetDistributionConfig`, and
