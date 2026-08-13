@@ -18,3 +18,9 @@ packages = ["promo_catalog"]
 
 [dependency-groups]
 dev = []
+dashboard = [
+    "altair>=5",
+    "duckdb>=1.2",
+    "marimo>=0.14",
+    "pandas>=2",
+]

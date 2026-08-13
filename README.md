@@ -37,7 +37,8 @@ npm test        # vitest
 Production: CloudFront + app bucket. See `infra/phase1/README.md` and `infra/phase2/README.md`.
 
 Product event logging (optional Phase 3): `infra/phase3/README.md` — same-origin
-`POST /events` → Lambda → S3 → daily Parquet → DuckDB (`scripts/query_events.py`).
+`POST /events` → Lambda → S3 → daily Parquet → DuckDB (`scripts/query_events.py`,
+Marimo dashboard `scripts/events_dashboard.py`).
 
 ```bash
 uv run python -m promo_catalog.generate_json   # when catalog changed

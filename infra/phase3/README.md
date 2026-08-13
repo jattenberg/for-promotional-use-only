@@ -99,6 +99,20 @@ uv run --with duckdb python scripts/query_events.py \
   --sql "select event, count(*) n from events group by 1 order by n desc"
 ```
 
+Local Marimo dashboard (S3-direct via DuckDB `httpfs`):
+
+```bash
+uv sync --group dashboard
+uv run --group dashboard marimo edit scripts/events_dashboard.py
+# or as a read-only app:
+uv run --group dashboard marimo run scripts/events_dashboard.py
+```
+
+Uses `AWS_PROFILE` (default `personal`) and bucket `for-promotional-use-only-events`.
+Submit **Load** after changing day/bucket/profile — queries do not run until then.
+Parquet stores props as `props_json` (JSON string); the dashboard extracts
+`song_path` / `query` with `json_extract_string`.
+
 ## Exit criteria
 
 - `POST https://for-promotional-use-only.com/events` with valid key → 204 + raw NDJSON in bucket
